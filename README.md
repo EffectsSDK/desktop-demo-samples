@@ -33,14 +33,14 @@ To receive a Effects SDK license please fill in the contact form on [effectssdk.
 The main object of the SDK is the instance which implements ISDKFactory. 
 Using an ISDKFactory instance you will be able to prepare frames for processing and configure the pipeline of processing (enable transparency, blur, replace background etc).
 
-### How to obtain a background_lib::IFactory object
+### How to obtain a tsvb::ISDKFactory instance
 
 - Load the tsvb.dll with the usage of **LoadLibrary()** function.
 - Get the address of **createSDKFactory()** function from the dll. Cast it to **::tsvb::pfnCreateSDKFactory** type.
 - Call the **createSDKFactory()** function to instantiate a **::tsvb::ISDKFactory** object.
 
 ``` cpp
-::tsvb::ISDKFactory* creatteFactory()
+::tsvb::ISDKFactory* createFactory()
 {
     HMODULE hModule = ::LoadLibrary("tsvb");
     auto createSDKFactory = reinterpret_cast<::tsvb::pfnCreateSDKFactory>(
@@ -66,18 +66,18 @@ All classes created by the SDK implements **IRelease**. **IRelease** interface p
 sdkFactory->release();
 ```
 
-Don’t use **delete()** for the SDK objects.
+Don’t use operator **delete** for the SDK objects.
 
 ### Library Usage
 
 Preparation:
 - Create an instance of **IFrameFactory**.
 - Create an instance of **IPipeline**.
-- Enable background blur using **IPipeline::enableBlurBackground()** or background replacement using **IPipeline::enableReplaceBackground**.
+- Enable background blur using **IPipeline::enableBlurBackground()** or background replacement using **IPipeline::enableReplaceBackground()**.
 - When the background replacement is enabled you need to pass image which will be used as a background: **IReplacementController::setBackgroundImage()**
 
 Frame processing:
-- Put your frame to **IFrame** using **IFrameFactory::create*()**.
+- Put your frame to **IFrame** using **IFrameFactory::create()**.
 - Process it through **IPipeline::process()**.
 
 Use separate **IPipeline** instances per video stream.
@@ -114,7 +114,7 @@ More usage details see in: **Sample/BGReplacer.cpp**.
 
 **IFrameFactory::createBGRA()** - create **IFrame** from the raw BGRA data.
 Parameters:
-- **void* data** - pointer to BGRA data.
+- **void\* data** - pointer to BGRA data.
 - **unsigned int bytesPerLine** - number of bytes per line of frame.
 - **unsigned int width** - number of pixels in horizontal direction.
 - **unsigned int height** - number of pixels in vertical direction.
@@ -122,9 +122,9 @@ Parameters:
 
 **IFrameFactory::createNV12()** - create **IFrame** from the raw NV12 data.
 Parameters:
-- **void* yData** - pointer to Y component data.
+- **void\* yData** - pointer to Y component data.
 - **unsigned int yBytesPerLine** - number of bytes in one line of Y component matrix. 
-- **void* uvData** - pointer to UV component data.
+- **void\* uvData** - pointer to UV component data.
 - **unsigned int uvBytesPerLine** - number of bytes in one line of UV component matrix
 - **unsigned int width** - number of pixels in horizontal direction.
 - **unsigned int height** - number of pixels in vertical direction.
@@ -133,7 +133,7 @@ Parameters:
 
 **IFrameFactory::loadImage()** - load data from the image and create **IFrame**. Return the NULL if the instance is not created.
 Parameters:
-- **const char* utf8FilePath** - path to the image file. Path should be in UTF-8.
+- **const char\* utf8FilePath** - path to the image file. Path should be in UTF-8.
 
 
 ## IFrame
@@ -156,7 +156,7 @@ Parameters:
 
 **ILockedFrameData** - keep access to the data inside IFrame and return pointers to that data.
 If it was obtained with **IFrame::lock()** with param **FrameLock::write** or **FrameLock::readWrite**, then the changes will be applied after **ILockedFrameData** will be released.  
-If it was obtained with **IFrame::lock()** with param **FrameLock::read**, then don’t change the data (this will lead to unpredictable behavior).
+If it was obtained with **IFrame::lock()** with param **FrameLock::read**, then don’t change the data.
 
 
 **ILockedFrameData::dataPointer()** - return pointer to component data.
@@ -180,7 +180,7 @@ Parameters:
 
 **IPipeline::setConfiguration()** - Configure pipeline, determine what to use for image processing (see **IPipelineConfiguration**), for example, GPU or CPU pipeline. This method is optional. 
 Parameters:
-- **const IPipelineConfiguration* config** - configuration to apply.
+- **const IPipelineConfiguration\* config** - configuration to apply.
 
 **IPipeline::copyConfiguration()** - Return a copy of current configuration. The caller is responsible for releasing the returned object. 
 
@@ -200,7 +200,7 @@ Parameters:
 **IReplacementController::setBackgroundImage()**. If background blur is enabled, then the custom image will be also blurred.
 
 Parameters:
-- **IReplacementController\*\* controller** - if not NULL then will be a new instance of **IReplacementController**. You have to manage the memory for the objects manually.
+- **IReplacementController\*\* controller** - if not NULL then will be a new instance of **IReplacementController**. Caller is responsible to release the obtained instance when it is not needed anymore.
 
 **IPipeline::disableReplaceBackground()** - disable background replacement.
 
@@ -233,12 +233,12 @@ Parameters:
 
 **IPipeline::process()** - return processed frame the same format with input (with all effects applied). In case of error, return NULL.
 Parameters:
-- **const IFrame* input** - frame for processing.
-- **PipelineError* error** - NULL or error code.
+- **const IFrame\* input** - frame for processing.
+- **PipelineError\* error** - NULL or error code.
 
 **IReplacementController::setBackgroundImage()** - set new custom background image.
 Parameters: 
-- **const IFrame* image** - custom image for the background, don’t release while processing.
+- **const IFrame\* image** - custom image for the background, don’t release while processing.
 
 **IReplacementController::clearBackgroundImage()** - clear custom background image, the background will be transparent.
 
