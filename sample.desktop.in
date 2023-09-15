@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=@SAMPLE_APP_NAME@
+Comment=Video Effects SDK Demo.
+Exec=@SAMPLE_APP_BIN_NAME@
+Icon=logo-icon
+Categories=Utility;

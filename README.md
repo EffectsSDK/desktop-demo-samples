@@ -6,7 +6,6 @@ This repository contains the trial version of C++ versions of Effects SDK that y
 
 Also, there is the Demo Applications with Effects SDK integration, so you can just run it right away and see SDK in action.
 
-
 ## Obtaining Effects SDK License
 
 To receive a Effects SDK license please fill in the contact form on [effectssdk.com](https://effectssdk.com/contacts) website.
@@ -26,7 +25,8 @@ To receive a Effects SDK license please fill in the contact form on [effectssdk.
 - Beautification/Touch up my appearance - **implemented**
 - Auto framing/Smart Zoom - **implemented**
 - Auto color correction - **implemented**
-- Color grading - **in progress**
+- Color grading - **implemented**
+- Background denoise - **in progress**
 
 ## Usage  details
 
@@ -39,7 +39,7 @@ Using an ISDKFactory instance you will be able to prepare frames for processing 
 - Get the address of **createSDKFactory()** function from the dll. Cast it to **::tsvb::pfnCreateSDKFactory** type.
 - Call the **createSDKFactory()** function to instantiate a **::tsvb::ISDKFactory** object.
 
-``` cpp
+```cpp
 ::tsvb::ISDKFactory* createFactory()
 {
     HMODULE hModule = ::LoadLibrary("tsvb");
@@ -60,7 +60,7 @@ Class methods:
 
 All classes created by the SDK implements **IRelease**. **IRelease** interface provides a **release()** method which releases the memory that was allocated for the object. The **release()** method should be called explicitly when such an object must be destroyed.
 
-``` cpp
+```cpp
 ::tsvb::ISDKFactory* sdkFactory = createFactory();
 //some code
 sdkFactory->release();
@@ -82,7 +82,7 @@ Frame processing:
 
 Use separate **IPipeline** instances per video stream.
 
-``` cpp
+```cpp
 void initialize()
 {
     ::tsvb::ISDKFactory* factory = createFactory();
@@ -105,6 +105,60 @@ void release()
 ```
 
 More usage details see in: **Sample/BGReplacer.cpp**.
+
+## How to build the sample
+
+### Windows
+
+Requirements:
+- Windows 10
+- CMake >= 3.16
+- Visual Studio 2019
+- OpenCV >= 4.5
+- Qt 6.5
+
+Build with cmake
+```
+mkdir build && cd build
+cmake -DEFFECTS_SDK_PATH=<Path to the unpacked SDK> ..
+cmake --build .. --config Release
+```
+
+### Mac OS
+
+Requirements
+- Xcode >= 13.4
+- CMake >= 3.16
+- OpenCV >= 4.5
+- Qt 5.15
+
+Build with cmake
+```sh
+mkdir build && cd build
+cmake -G Xcode -DEFFECTS_SDK_PATH=/path/to/unpacked_sdk ..
+cmake --build .. --config Release
+```
+
+### Linux Ubuntu
+
+How to build with Ubuntu 20.04
+
+To build the sample, needed to install deps from install_build_deps_astra.sh
+```sh
+sudo /path/to/install_build_deps_astra.sh
+```
+
+```sh
+mkdir build && cd build
+cmake -DEFFECTS_SDK_PATH=/path/to/unpacked_sdk /path/to/sample/source
+cmake --build . --config Release
+```
+
+How to run
+```sh
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/path/to/libtsvb.so
+./VideoEffectsSDK
+```
 
 ## Class Reference
 
@@ -217,10 +271,27 @@ Parameters:
 
 **IPipeline::getBeautitifcationLevel()** - return current beautification level.
 
-**IPipeline::enableColorCorrection()** - enable color correction.
+**IPipeline::enableColorCorrection()** - enable automatic color correction. Improves colors with the help of ML.
+Disables another enabled color correction effect.
 Note: Preparation starts asynchronously after a frame process, the effect may be delayed.
 
+**IPipeline::enableColorCorrectionWithReference()** - enable color grading. Generate a color palette from an image and apply it to the video.
+Parameters:
+- **IFrame\* referenceFrame** - The reference to generate a color palette.
+If enabled, generates a new color palette with referenceFrame.
+Disables another enabled color correction effect.
+
+**IPipeline::enableColorCorrectionWithLutFile()** - enable color filtering with a Lookup Table (Lut).
+Parameters:
+- **const char* utf8FilePath** - path to .cube file. Supports only 3D Lut with maximum size 65 (65x65x65).
+If enabled, switches Lut.
+Disables another enabled color correction effect.
+
 **IPipeline::disableColorCorrection()** - disable color correction.
+
+**IPipeline::setColorCorrectionPower(float power)** - set visibility of the color correction effect. 
+Parameters:
+- **float power** - power could be from 0 to 1. Higher number -> more visible effect of color correction;
 
 **IPipeline::enableSmartZoom()** - enable smart zoom.
 Smart Zoom crops around the face.
@@ -230,6 +301,25 @@ Smart Zoom crops around the face.
 **IPipeline::setSmartZoomLevel()** - set smart zoom level.
 Parameters:
 - **float level** - level could be from 0 to 1. Defines how much area should be filled by a face. Higher number -> More area. 
+
+**IPipeline::enableDenoiseBackground()** - enable denoising effect.
+By default this effect denoises only background. To denoise foreground too, pass true to IPipeline::setDenoiseWithFace.
+
+**IPipeline::disableBackgroundDenoise()** - disable denoising effect.
+
+**IPipeline::setDenoisePower()** - set denoise filter power.
+Parameters:
+- **float power** - power could be from 0 to 1. Higher number -> stronger filtering. Default is 0.8.
+
+**IPipeline::getDenoisePower()** - return current denoise power.
+
+**IPipeline::setDenoiseWithFace()** 
+Parameters:
+- **bool withFace** - if true then the filter will denoise foreground too, otherwise background only. Default is false.
+
+**IPipeline::getDenoiseWithFace()** - return denoiseWithFace state.
+
+**IPipeline::getDenoiseBackgroundState()** - return true if denoise is enabled, otherwise false.
 
 **IPipeline::process()** - return processed frame the same format with input (with all effects applied). In case of error, return NULL.
 Parameters:
@@ -248,8 +338,22 @@ Parameters:
 - **CPU** - CPU-based pipeline.
 - **GPU** - GPU-based pipeline.
 
-**setBackend()** - Set backend parameter.
+**IPipelineConfiguration::setBackend()** - Set backend parameter.
 Parameters:
 - **int backend** - must be one of Backend values.
+Default is GPU
 
-**backend()** - return backend parameter.
+**IPipelineConfiguration::backend()** - return backend parameter.
+
+**SegmentationPreset** - Segmentation mode allow to choose combination of quality and speed of segmentation.
+- **segmentationPresetQuality** - Quality is preferred.
+- **segmentationPresetBalanced** - Balanced quality and speed.
+- **segmentationPresetSpeed** - Speed is preferred.
+- **segmentationPresetLightning** - Speed is prioritized.
+
+**IPipelineConfiguration::setSegmentationPreset()** - set segmentation preset.
+Parameters:
+- **int preset** - must be one of SegmentationPreset values.
+Default is segmentationPresetQuality.
+
+**IPipelineConfiguration::getSegmentationPreset()** - return current segmentation preset.

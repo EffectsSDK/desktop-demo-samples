@@ -1,0 +1,11 @@
+syntax: glob
+*.dll
+.vs/
+*.VC.*db
+build/*
+CMakeSettings.json
+.DS_Store
+.idea/
+.venv/
+win_version/version_config.cmake
+CMakeLists.txt.user
