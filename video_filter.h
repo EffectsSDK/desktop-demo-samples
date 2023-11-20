@@ -66,6 +66,13 @@ public:
 	bool isColorFilterEnabled() const;
 	void setColorFilterPower(float power);
 
+	bool enableLowLightAdjustment();
+	void disableLowLightAdjustment();
+	bool isLowLightAdjustmentEnabled() const;
+	void setLowLightAdjustmentPower(float power);
+	float getLowLightAdjustmentPower() const;
+	void setLowLightAdjustmentUpdateInterval(int ms);
+
 private:
 	class Impl;
 	std::unique_ptr<Impl> _impl;

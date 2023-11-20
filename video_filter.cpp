@@ -46,6 +46,7 @@ class VideoFilter::Impl
 	bool _smartZoomEnabled = false;
 	bool _colorGradingEnabled = false;
 	bool _colorFiltersEnabled = false;
+	bool _lowLightEnabled = false;
 
 public:
 	Impl()
@@ -454,6 +455,40 @@ public:
 		std::lock_guard<std::mutex> lockGuard(_mutex);
 		_pipeline->setColorCorrectionPower(power);
 	}
+
+	bool enableLowLightAdjustment()
+	{
+		std::lock_guard<std::mutex> lockGuard(_mutex);
+		auto error = _pipeline->enableLowLightAdjustment();
+		_lowLightEnabled = tsvb::PipelineErrorCode::ok == error;
+		return _lowLightEnabled;
+	}
+
+	void disableLowLightAdjustment()
+	{
+		std::lock_guard<std::mutex> lockGuard(_mutex);
+		_pipeline->disableLowLightAdjustment();
+		_lowLightEnabled = false;
+	}
+
+	bool isLowLightAdjustmentEnabled() const
+	{
+		std::lock_guard<std::mutex> lockGuard(_mutex);
+		return _lowLightEnabled;
+	}
+
+
+	void setLowLightAdjustmentPower(float power)
+	{
+		std::lock_guard<std::mutex> lockGuard(_mutex);
+		_pipeline->setLowLightAdjustmentPower(power);
+	}
+
+	float getLowLightAdjustmentPower() const
+	{
+		std::lock_guard<std::mutex> lockGuard(_mutex);
+		return _pipeline->getLowLightAdjustmentPower();
+	}
 };
 
 VideoFilter::VideoFilter()
@@ -674,5 +709,30 @@ bool VideoFilter::isColorFilterEnabled() const
 void VideoFilter::setColorFilterPower(float power)
 {
 	_impl->setColorFilterPower(power);
+}
+
+bool VideoFilter::enableLowLightAdjustment()
+{
+	return _impl->enableLowLightAdjustment();
+}
+
+void VideoFilter::disableLowLightAdjustment()
+{
+	_impl->disableLowLightAdjustment();
+}
+
+bool VideoFilter::isLowLightAdjustmentEnabled() const
+{
+	return _impl->isLowLightAdjustmentEnabled();
+}
+
+void VideoFilter::setLowLightAdjustmentPower(float power)
+{
+	_impl->setLowLightAdjustmentPower(power);
+}
+
+float VideoFilter::getLowLightAdjustmentPower() const
+{
+	return _impl->getLowLightAdjustmentPower();
 }
 

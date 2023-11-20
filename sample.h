@@ -32,6 +32,7 @@ public slots:
 	void toggleSmartZoomEnabled();
 	void toggleColorGradingEnabled();
 	void toggleColorFilterEnabled();
+	void toggleLowLightAdjustment();
 	void onColorFilterPicked(const QString& fileName);
 	void openBackground();
 	void openColorGradingReference();
@@ -45,6 +46,7 @@ public slots:
 	void updateMetrics();
 	void onColorIntensitySliderMoved();
 	void onColorLUTFileNotFoundError(const QString& fileName);
+	void onLowLightAdjustmentPowerSliderMoved();
 
 private:
 	void updateUIState();

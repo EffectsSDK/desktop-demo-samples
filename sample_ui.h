@@ -34,6 +34,7 @@ public:
 	QCheckBox* replaceCheckBox = nullptr;
 	QCheckBox* beautificateCheckBox = nullptr;
 	QCheckBox* smartZoomCheckBox = nullptr;
+	QCheckBox* lowLightAdjustmentCheckbox = nullptr;
 	QPushButton* openBackgroundButton = nullptr;
 	QPushButton* openReferencedButton = nullptr;
 	QLabel* beautificationLevelLabel = nullptr;
@@ -42,6 +43,8 @@ public:
 	QSlider* denoisePowerSlider = nullptr;
 	QLabel* zoomLevelLabel = nullptr;
 	QSlider* zoomLevelSlider = nullptr;
+	QLabel* lowLightAdjustmentPowerLabel = nullptr;
+	QSlider* lowLightAdjustmentPowerSlider = nullptr;
 
 	QGroupBox* colorBox = nullptr;
 	QCheckBox* correctColorsCheckbox = nullptr;

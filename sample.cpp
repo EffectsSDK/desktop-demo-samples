@@ -18,11 +18,19 @@ const char DENOISE_ENABLED[] = "denoise_enabled";
 const char DENOISE_LEVEL[] = "denoise_level";
 const char DENOISE_WITH_FACE[] = "denoise_with_face";
 const char SMART_ZOOM_ENABLED[] = "smart_zoom_enabled";
+const char LOW_LIGHT_ADJUSTMENT_ENABLED[] = "low_light_adjustment_enabled";
 const char ZOOM_LEVEL[] = "zoom_level";
+const char LOW_LIGHT_ADJUSTMENT_POWER[] = "low_light_adjustment_power";
 const char BACKGROUND_FILEPATH[] = "background_filepath";
 const char BACKEND[] = "backend";
 const char PRESET[] = "preset";
 const char COLOR_GRADING_REFERENCE_PATH[] = "color_grading_reference_path";
+const char ENABLED_COLOR_CORRECTION_MODE[] = "enabled_color_correction_mode";
+const char COLOR_CORRECTION_MODE_AUTO[] = "color_correction_mode_auto";
+const char COLOR_CORRECTION_MODE_FILTER[] = "color_correction_mode_filter";
+const char COLOR_CORRECTION_MODE_GRADING[] = "color_correction_mode_grading";
+const char COLOR_FILTER_FILE[] = "color_filter_file";
+
 
 #ifdef Q_OS_MACOS
 static QString bundleResourcesPath()
@@ -155,6 +163,7 @@ void Sample::updateUIState()
 	m_ui->correctColorsCheckbox->setChecked(videoFilter->isColorCorrectionEnabled());
 	m_ui->colorGradingCheckbox->setChecked(videoFilter->isColorGradingEnabled());
 	m_ui->smartZoomCheckBox->setChecked(videoFilter->isSmartZoomEnabled());
+	m_ui->lowLightAdjustmentCheckbox->setChecked(videoFilter->isLowLightAdjustmentEnabled());
 
 	m_ui->beautificationLevelSlider->setEnabled(videoFilter->isBeautificationEnabled());
 	float beautificationLevel = videoFilter->beautificationLevel();
@@ -177,6 +186,22 @@ void Sample::updateUIState()
 	));
 	m_ui->zoomLevelLabel->setText(stringFromNumber(zoomLevel));
 	m_ui->zoomLevelSlider->setEnabled(videoFilter->isSmartZoomEnabled());
+
+	m_ui->correctColorsCheckbox->setChecked(videoFilter->isColorCorrectionEnabled());
+	m_ui->colorFilterCheckbox->setChecked(videoFilter->isColorFilterEnabled());
+	m_ui->colorGradingCheckbox->setChecked(videoFilter->isColorGradingEnabled());
+	bool colorCorrectionEnabled =
+		videoFilter->isColorCorrectionEnabled() ||
+		videoFilter->isColorFilterEnabled() ||
+		videoFilter->isColorGradingEnabled();
+	m_ui->colorIntensitySlider->setEnabled(colorCorrectionEnabled);
+
+	float lowLightPower = videoFilter->getLowLightAdjustmentPower();
+	m_ui->lowLightAdjustmentPowerSlider->setValue(static_cast<int>(
+		m_ui->lowLightAdjustmentPowerSlider->maximum() * lowLightPower
+	));
+	m_ui->lowLightAdjustmentPowerLabel->setText(stringFromNumber(lowLightPower));
+	m_ui->lowLightAdjustmentPowerSlider->setEnabled(videoFilter->isLowLightAdjustmentEnabled());
 
 	auto backend = videoFilter->backend();
 	m_ui->gpuRadioButton->setChecked(Backend::gpu == backend);
@@ -287,6 +312,14 @@ bool Sample::restoreUIAndPipelineFromSettings()
 		videoFilter->disableSmartZoom();
 	}
 
+	bool isLowLightEnabled = m_settings->value(LOW_LIGHT_ADJUSTMENT_ENABLED, false).toBool();
+	if (isLowLightEnabled) {
+		videoFilter->enableLowLightAdjustment();
+	}
+	else {
+		videoFilter->disableLowLightAdjustment();
+	}
+
 	QString backgroundFilePath = m_settings->value(
 		BACKGROUND_FILEPATH,
 		defaultBackgroundPath()
@@ -319,10 +352,34 @@ bool Sample::restoreUIAndPipelineFromSettings()
 	zoomLevel = std::min(std::max(zoomLevel, 0.0f), 1.0f);
 	videoFilter->setSmartZoomLevel(zoomLevel);
 
+	float defaultLowLightPower = videoFilter->getLowLightAdjustmentPower();
+	float lowLightPower = m_settings->value(LOW_LIGHT_ADJUSTMENT_POWER, defaultLowLightPower).toFloat();
+	lowLightPower = std::min(std::max(lowLightPower, 0.0f), 1.0f);
+	videoFilter->setLowLightAdjustmentPower(lowLightPower);
+
 	QString colorGradingRefPath = 
 		m_settings->value(COLOR_GRADING_REFERENCE_PATH).toString();
 	if (QFile::exists(colorGradingRefPath)) {
 		m_colorGradingRefPath = colorGradingRefPath;
+	}
+
+	QString colorFilterFile = 
+		m_settings->value(COLOR_FILTER_FILE, QString()).toString();
+	if (!colorFilterFile.isEmpty()) {
+		m_ui->setCurrentColorFilter(colorFilterFile);
+	}
+
+	QString colorCorrectionMode =
+		m_settings->value(ENABLED_COLOR_CORRECTION_MODE, QString()).toString();
+	if (COLOR_CORRECTION_MODE_AUTO == colorCorrectionMode) {
+		videoFilter->enableColorCorrection();
+	}
+	else if (COLOR_CORRECTION_MODE_FILTER == colorCorrectionMode) {
+		QString filePath = selectedColorLutFilePath();
+		videoFilter->enableColorFilter(filePath);
+	}
+	else if (COLOR_CORRECTION_MODE_GRADING == colorCorrectionMode) {
+		videoFilter->enableColorGrading(m_colorGradingRefPath);
 	}
 
 	return true;
@@ -442,6 +499,7 @@ bool Sample::enableColorFilter(const QString& lutFilePath)
 	}
 	m_ui->colorIntensitySlider->setEnabled(true);
 	onColorIntensitySliderMoved();
+	m_settings->setValue(ENABLED_COLOR_CORRECTION_MODE, COLOR_CORRECTION_MODE_FILTER);
 
 	return true;
 }
@@ -578,6 +636,7 @@ void Sample::toggleCorrectColorsEnabled()
 		m_pipeline->videoFilter()->disableColorCorrection();
 		m_ui->correctColorsCheckbox->setChecked(false);
 		m_ui->colorIntensitySlider->setEnabled(false);
+		m_settings->remove(ENABLED_COLOR_CORRECTION_MODE);
 		return;
 	}
 	bool result = m_pipeline->videoFilter()->enableColorCorrection();
@@ -590,6 +649,7 @@ void Sample::toggleCorrectColorsEnabled()
 
 	m_ui->colorIntensitySlider->setEnabled(true);
 	onColorIntensitySliderMoved();
+	m_settings->setValue(ENABLED_COLOR_CORRECTION_MODE, COLOR_CORRECTION_MODE_AUTO);
 }
 
 void Sample::toggleSmartZoomEnabled()
@@ -623,6 +683,7 @@ void Sample::toggleColorGradingEnabled()
 		m_pipeline->videoFilter()->disableColorGrading();
 		m_ui->colorGradingCheckbox->setChecked(false);
 		m_ui->colorIntensitySlider->setEnabled(false);
+		m_settings->remove(ENABLED_COLOR_CORRECTION_MODE);
 		return;
 	}
 	if (m_colorGradingRefPath.isEmpty()) {
@@ -640,6 +701,7 @@ void Sample::toggleColorGradingEnabled()
 		QMessageBox::warning(this, "Error", "Failure to enable Color Grading");
 		return;
 	}
+	m_settings->setValue(ENABLED_COLOR_CORRECTION_MODE, COLOR_CORRECTION_MODE_GRADING);
 	m_ui->colorIntensitySlider->setEnabled(true);
 	onColorIntensitySliderMoved();
 }
@@ -651,6 +713,7 @@ void Sample::toggleColorFilterEnabled()
 		m_pipeline->videoFilter()->disableColorFilter();
 		m_ui->colorFilterCheckbox->setChecked(false);
 		m_ui->colorIntensitySlider->setEnabled(false);
+		m_settings->remove(ENABLED_COLOR_CORRECTION_MODE);
 		return;
 	}
 
@@ -668,6 +731,26 @@ void Sample::toggleColorFilterEnabled()
 	enableColorFilter(lutFilePath);
 }
 
+void Sample::toggleLowLightAdjustment()
+{
+	bool enabled = m_pipeline->videoFilter()->isLowLightAdjustmentEnabled();
+	if (enabled) {
+		m_pipeline->videoFilter()->disableLowLightAdjustment();
+		m_ui->lowLightAdjustmentCheckbox->setChecked(false);
+		m_ui->lowLightAdjustmentPowerSlider->setEnabled(false);
+		m_settings->setValue(LOW_LIGHT_ADJUSTMENT_ENABLED, false);
+		return;
+	}
+
+	bool ok = m_pipeline->videoFilter()->enableLowLightAdjustment();
+	m_ui->lowLightAdjustmentCheckbox->setChecked(ok);
+	m_ui->lowLightAdjustmentPowerSlider->setEnabled(ok);
+	m_settings->setValue(LOW_LIGHT_ADJUSTMENT_ENABLED, ok);
+	if (!ok) {
+		QMessageBox::warning(this, "Error", "Failure to enable Low Light");
+	}
+}
+
 void Sample::onColorFilterPicked(const QString& fileName)
 {
 	if (m_pipeline->videoFilter()->isColorFilterEnabled()) {
@@ -675,8 +758,12 @@ void Sample::onColorFilterPicked(const QString& fileName)
 		if (lutFilePath.isEmpty()) {
 			onColorLUTFileNotFoundError(m_ui->currentColorFilter());
 		}
-		enableColorFilter(lutFilePath);
+		bool ok = enableColorFilter(lutFilePath);
+		if (!ok) {
+			return;
+		}
 	}
+	m_settings->setValue(COLOR_FILTER_FILE, fileName);
 }
 
 void Sample::onColorIntensitySliderMoved()
@@ -703,6 +790,15 @@ void Sample::onColorLUTFileNotFoundError(const QString& fileName)
 	}
 
 	QMessageBox::warning(this, "File not found", msg);
+}
+
+void Sample::onLowLightAdjustmentPowerSliderMoved()
+{
+	float value = 
+		float(m_ui->lowLightAdjustmentPowerSlider->value()) / float(m_ui->lowLightAdjustmentPowerSlider->maximum());
+	m_pipeline->videoFilter()->setLowLightAdjustmentPower(value);
+	m_ui->lowLightAdjustmentPowerLabel->setText(stringFromNumber(value));
+	m_settings->setValue(LOW_LIGHT_ADJUSTMENT_POWER, value);
 }
 
 void Sample::openBackground()

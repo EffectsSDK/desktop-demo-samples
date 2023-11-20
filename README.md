@@ -321,6 +321,18 @@ Parameters:
 
 **IPipeline::getDenoiseBackgroundState()** - return true if denoise is enabled, otherwise false.
 
+**IPipeline::enableLowLightAdjustment()** - enable the brightening effect.  
+Low Light Adjustment enhances the brightness of a dark video. It is useful when the video has a darker environment.  
+It's recommended to use together with Color Correction.
+
+**IPipeline::disableLowLightAdjustment()** - disable the brightening effect.  
+
+**IPipeline::setLowLightAdjustmentPower()** - set the power of the brightening effect.  
+Parameters:  
+- **float power** - power could be from 0 to 1. Higher number -> brighter result. Default is 0.6.
+
+**IPipeline::getLowLightAdjustmentPower()** - get the power of the brightening effect.  
+
 **IPipeline::process()** - return processed frame the same format with input (with all effects applied). In case of error, return NULL.
 Parameters:
 - **const IFrame\* input** - frame for processing.

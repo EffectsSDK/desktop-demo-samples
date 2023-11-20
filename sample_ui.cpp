@@ -153,6 +153,13 @@ void SampleUI::createUI()
 	);
 	vbLayout->addWidget(smartZoomCheckBox, 0, Qt::AlignLeft);
 
+	lowLightAdjustmentCheckbox = new QCheckBox("Adjust for Low Light");
+	connect(
+		lowLightAdjustmentCheckbox, &QCheckBox::clicked,
+		m_sample, &Sample::toggleLowLightAdjustment
+	);
+	vbLayout->addWidget(lowLightAdjustmentCheckbox);
+
 	openBackgroundButton = new QPushButton("Open Background", virtualBackgroundBox);
 	connect(
 		openBackgroundButton, &QPushButton::clicked,
@@ -211,6 +218,21 @@ void SampleUI::createUI()
 		Qt::QueuedConnection
 	);
 	vbLayout->addWidget(zoomLevelSlider);
+
+	auto lowLightPowerLabelLayout = new QHBoxLayout;
+	lowLightPowerLabelLayout->addWidget(new QLabel("Low Light Adjustment Power"));
+	lowLightPowerLabelLayout->addStretch(1);
+	lowLightAdjustmentPowerLabel = new QLabel();
+	lowLightPowerLabelLayout->addWidget(lowLightAdjustmentPowerLabel);
+	lowLightAdjustmentPowerSlider = new QSlider(Qt::Horizontal);
+	lowLightAdjustmentPowerSlider->setRange(0, 100);
+	connect(
+		lowLightAdjustmentPowerSlider, &QSlider::actionTriggered,
+		m_sample, &Sample::onLowLightAdjustmentPowerSliderMoved,
+		Qt::QueuedConnection
+	);
+	vbLayout->addLayout(lowLightPowerLabelLayout);
+	vbLayout->addWidget(lowLightAdjustmentPowerSlider);
 
 	colorBox = new QGroupBox("Color", m_sample);
 	vbLayout->addWidget(colorBox);
