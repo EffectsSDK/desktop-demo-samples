@@ -6,4 +6,10 @@
 
 QStringList availableCameras();
 
+#ifdef Q_OS_LINUX
+std::string findDevicePathByName(const QString& name);
+#else
+int findDeviceIndexByName(const QString& name);
+#endif
+
 #endif 

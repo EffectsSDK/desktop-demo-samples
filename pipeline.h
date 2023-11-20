@@ -18,9 +18,9 @@ public:
 	~Pipeline() override;
 
 	void setDeviceIndex(int index);
-	void setDeviceIndexAndFrameSize(int index, int width, int height);
+	void setMediaPath(const std::string& path);
 
-	void frameSize(int& width, int& height);
+	void getFrameSize(int& width, int& height);
 	void trySetFrameSize(int width, int height);
 
 	void start();
@@ -38,9 +38,11 @@ private:
 	bool _started = false;
 
 	std::atomic<bool> _openDeviceRequested;
-	std::atomic<int> _deviceIndex;
-	std::atomic<int> _frameWidth;
-	std::atomic<int> _frameHeight;
+	std::mutex _mutex;
+	int _deviceIndex;
+	std::string _mediaPath;
+	int _frameWidth;
+	int _frameHeight;
 
 	VideoFilter m_videoFilter;
 	Metrics m_metrics;

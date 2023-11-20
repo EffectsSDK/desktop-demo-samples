@@ -21,7 +21,7 @@ public:
 	~Sample() override;
 
 public slots:
-	void onCameraPicked(int index);
+	void onCameraPicked(const QString& cameraName);
 	void setCameraScale(const QSize& scale);
 	void toggleBlurEnabled();
 	void toggleDenoiseEnabled();
@@ -55,6 +55,7 @@ private:
 	QString selectedColorLutFilePath() const;
 	void checkCPUPipelineAvailable();
 	void checkGPUOnlyFeaturesEnabled();
+	bool setCameraByName(const QString& name);
 
 	QString stringFromNumber(double number);
 

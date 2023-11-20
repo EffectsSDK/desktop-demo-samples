@@ -29,6 +29,7 @@ Pipeline::~Pipeline()
 
 void Pipeline::setDeviceIndex(int index)
 {
+	std::lock_guard<std::mutex> lock(_mutex);
 	if (index == _deviceIndex) {
 		return;
 	}
@@ -37,26 +38,27 @@ void Pipeline::setDeviceIndex(int index)
 	_openDeviceRequested = true;
 }
 
-void Pipeline::setDeviceIndexAndFrameSize(int index, int width, int height)
+void Pipeline::setMediaPath(const std::string& path)
 {
-	if (index == _deviceIndex && _frameWidth == width && _frameHeight == height) {
+	std::lock_guard<std::mutex> lock(_mutex);
+	if (path == _mediaPath) {
 		return;
 	}
 
-	_deviceIndex = index;
-	_frameWidth = width;
-	_frameHeight = height;
+	_mediaPath = path;
 	_openDeviceRequested = true;
 }
 
-void Pipeline::frameSize(int& width, int& height)
+void Pipeline::getFrameSize(int& width, int& height)
 {
+	std::lock_guard<std::mutex> lock(_mutex);
 	width = _frameWidth;
 	height = _frameHeight;
 }
 
 void Pipeline::trySetFrameSize(int width, int height)
 {
+	std::lock_guard<std::mutex> lock(_mutex);
 	if (_frameWidth == width && _frameHeight == height) {
 		return;
 	}
@@ -96,13 +98,30 @@ void Pipeline::runLoop()
 		if (_openDeviceRequested.exchange(false)) {
 			m_metrics.setCameraSwitch(true);
 			capturer.release();
-			capturer.open(_deviceIndex);			
+
+			int frameWidth;
+			int frameHeight;
+			int deviceIndex;
+			std::string mediaPath;
+			{
+				std::lock_guard<std::mutex> lock(_mutex);
+				frameWidth = _frameWidth;
+				frameHeight = _frameHeight;
+				deviceIndex = _deviceIndex;
+				mediaPath = _mediaPath;
+			}
+			if (!mediaPath.empty()) {
+				capturer.open(mediaPath);
+			}
+			else {
+				capturer.open(deviceIndex);
+			}
 			#if (CV_MAJOR_VERSION >= 3)
-			capturer.set(cv::CAP_PROP_FRAME_WIDTH, _frameWidth);
-			capturer.set(cv::CAP_PROP_FRAME_HEIGHT, _frameHeight);
+			capturer.set(cv::CAP_PROP_FRAME_WIDTH, frameWidth);
+			capturer.set(cv::CAP_PROP_FRAME_HEIGHT, frameHeight);
 			#else
-			capturer.set(CV_CAP_PROP_FRAME_WIDTH, _frameWidth);
-			capturer.set(CV_CAP_PROP_FRAME_HEIGHT, _frameHeight);
+			capturer.set(CV_CAP_PROP_FRAME_WIDTH, frameWidth);
+			capturer.set(CV_CAP_PROP_FRAME_HEIGHT, frameHeight);
 			#endif
 
 			m_metrics.setCameraSwitch(false);

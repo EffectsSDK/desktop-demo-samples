@@ -83,10 +83,18 @@ void SampleUI::createUI()
 #if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
 	cameraComoBox->setPlaceholderText("Default Camera");
 #endif
+
+#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
 	connect(
-		cameraComoBox, QOverload<int>::of(&QComboBox::activated),
+		cameraComoBox, &QComboBox::textActivated,
 		m_sample, &Sample::onCameraPicked
 	);
+#else
+	connect(
+		cameraComoBox, QOverload<const QString&>::of(&QComboBox::activated),
+		m_sample, &Sample::onCameraPicked
+	);
+#endif
 
 	auto cameraScaleLabel = new QHBoxLayout;
 	cameraScaleLabel->addWidget(new QLabel("Camera scale"));

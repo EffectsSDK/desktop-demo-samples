@@ -1,5 +1,6 @@
 #include "sample.h"
 
+#include "media_utils.h"
 #include "pipeline.h"
 #include "sample_ui.h"
 
@@ -7,7 +8,7 @@
 #include "camera_access_authorization.h"
 #endif
 
-const char CAMERA_INDEX[] = "camera_index";
+const char CAMERA_NAME[] = "camera_name";
 const char CAMERA_SCALE[] = "camera_scale";
 const char BLUR_ENABLED[] = "blur_enabled";
 const char REPLACE_ENABLED[] = "replace_enabled";
@@ -230,10 +231,9 @@ bool Sample::restoreUIAndPipelineFromSettings()
 		}
 	}
 
-	int deviceIndex = m_settings->value(CAMERA_INDEX, 0).toInt();
-	deviceIndex = std::max(std::min(deviceIndex, m_ui->cameraScaleComoBox->count()), 0);
-	m_ui->cameraComoBox->setCurrentIndex(deviceIndex);
-
+	QString cameraName = m_settings->value(CAMERA_NAME, 0).toString();
+	setCameraByName(cameraName);
+	m_ui->cameraComoBox->setCurrentText(cameraName);
 
 	QSize cameraScale = 
 		m_settings->value(CAMERA_SCALE).toSize();
@@ -244,11 +244,7 @@ bool Sample::restoreUIAndPipelineFromSettings()
 	int cameraScaleIndex = m_ui->cameraScaleComoBox->findData(cameraScale);
 	m_ui->cameraScaleComoBox->setCurrentIndex(cameraScaleIndex);
 
-	m_pipeline->setDeviceIndexAndFrameSize(
-		deviceIndex,
-		cameraScale.width(),
-		cameraScale.height()
-	);
+	m_pipeline->trySetFrameSize(cameraScale.width(), cameraScale.height());
 
 	bool isBlurEnabled = m_settings->value(BLUR_ENABLED, false).toBool();
 	if (isBlurEnabled) {
@@ -406,6 +402,25 @@ void Sample::checkGPUOnlyFeaturesEnabled()
 #endif
 }
 
+bool Sample::setCameraByName(const QString& name)
+{
+#ifdef Q_OS_LINUX
+	std::string devicePath = findDevicePathByName(name);
+	if (devicePath.empty()) {
+		return false;
+	}
+	m_pipeline->setMediaPath(devicePath);
+#else
+	int deviceIndex = findDeviceIndexByName(name);
+	if (-1 == deviceIndex) {
+		return false;
+	}
+	m_pipeline->setDeviceIndex(deviceIndex);
+#endif
+
+	return true;
+}
+
 QString Sample::stringFromNumber(double number)
 {
 	return QString::number(number, 'g', 2);
@@ -431,12 +446,11 @@ bool Sample::enableColorFilter(const QString& lutFilePath)
 	return true;
 }
 
-void Sample::onCameraPicked(int index)
+void Sample::onCameraPicked(const QString& cameraName)
 {
-	int deviceIndex = index;
-
-	m_pipeline->setDeviceIndex(deviceIndex);
-	m_settings->setValue(CAMERA_INDEX, deviceIndex);
+	if (setCameraByName(cameraName)) {
+		m_settings->setValue(CAMERA_NAME, cameraName);
+	}
 }
 
 void Sample::setCameraScale(const QSize& scale)

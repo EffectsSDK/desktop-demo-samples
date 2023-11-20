@@ -23,3 +23,29 @@ QStringList availableCameras()
 
 	return result;
 }
+
+#ifdef Q_OS_LINUX
+std::string findDevicePathByName(const QString& name)
+{
+	for (const auto& deviceInfo : QCameraInfo::availableCameras()) {
+		if (deviceInfo.description() == name) {
+			return deviceInfo.deviceName().toStdString();
+		}
+	}
+
+	return std::string();
+}
+#else
+int findDeviceIndexByName(const QString& name)
+{
+	int index = 0;
+	for (auto& cameraName : availableCameras()) {
+		if (name == cameraName) {
+			return index;
+		}
+		index++;
+	}
+
+	return -1;
+}
+#endif
