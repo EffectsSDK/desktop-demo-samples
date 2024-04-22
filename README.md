@@ -333,6 +333,17 @@ Parameters:
 
 **IPipeline::getLowLightAdjustmentPower()** - get the power of the brightening effect.  
 
+**IPipeline::enableSharpening()** - enable sharpening effect.  
+Sharpening makes the video look better by enhancing its clarity. It reduces blurriness in the video.  
+
+**IPipeline::disableSharpening()** - disable sharpening effect.  
+
+**IPipeline::getSharpeningPower()** - get current power of the sharpening effect.  
+
+**IPipeline::setSharpeningPower()** - set current power of the sharpening effect.  
+Parameters:  
+- **float power** - power could be from 0 to 1. Higher number -> sharper result.
+
 **IPipeline::process()** - return processed frame the same format with input (with all effects applied). In case of error, return NULL.
 Parameters:
 - **const IFrame\* input** - frame for processing.
@@ -361,7 +372,9 @@ Default is GPU
 - **segmentationPresetQuality** - Quality is preferred.
 - **segmentationPresetBalanced** - Balanced quality and speed.
 - **segmentationPresetSpeed** - Speed is preferred.
-- **segmentationPresetLightning** - Speed is prioritized.
+- **segmentationPresetLightning** - Speed is prioritized.  
+
+*Note*: On Apple systems, **segmentationPresetSpeed** requires macOS 11.0 or iOS 14.
 
 **IPipelineConfiguration::setSegmentationPreset()** - set segmentation preset.
 Parameters:
