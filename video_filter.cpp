@@ -47,6 +47,7 @@ class VideoFilter::Impl
 	bool _colorGradingEnabled = false;
 	bool _colorFiltersEnabled = false;
 	bool _lowLightEnabled = false;
+	bool _sharpeningEnabled = false;
 
 public:
 	Impl()
@@ -489,6 +490,39 @@ public:
 		std::lock_guard<std::mutex> lockGuard(_mutex);
 		return _pipeline->getLowLightAdjustmentPower();
 	}
+
+	bool enableSharpening()
+	{
+		std::lock_guard<std::mutex> lockGuard(_mutex);
+		tsvb::PipelineError error = _pipeline->enableSharpening();
+		_sharpeningEnabled = (tsvb::PipelineErrorCode::ok == error);
+		return _sharpeningEnabled;
+	}
+
+	void disableSharpening()
+	{
+		std::lock_guard<std::mutex> lockGuard(_mutex);
+		_pipeline->disableSharpening();
+		_sharpeningEnabled = false;
+	}
+
+	bool isSharpeningEnabled() const
+	{
+		std::lock_guard<std::mutex> lockGuard(_mutex);
+		return _sharpeningEnabled;
+	}
+
+	float sharpeningPower() const
+	{
+		std::lock_guard<std::mutex> lockGuard(_mutex);
+		return _pipeline->getSharpeningPower();
+	}
+
+	void setSharpeningPower(float power)
+	{
+		std::lock_guard<std::mutex> lockGuard(_mutex);
+		_pipeline->setSharpeningPower(power);
+	}
 };
 
 VideoFilter::VideoFilter()
@@ -734,5 +768,30 @@ void VideoFilter::setLowLightAdjustmentPower(float power)
 float VideoFilter::getLowLightAdjustmentPower() const
 {
 	return _impl->getLowLightAdjustmentPower();
+}
+
+bool VideoFilter::enableSharpening()
+{
+	return _impl->enableSharpening();
+}
+
+void VideoFilter::disableSharpening()
+{
+	_impl->disableSharpening();
+}
+
+bool VideoFilter::isSharpeningEnabled() const
+{
+	return _impl->isSharpeningEnabled();
+}
+
+float VideoFilter::sharpeningPower() const
+{
+	return _impl->sharpeningPower();
+}
+
+void VideoFilter::setSharpeningPower(float power)
+{
+	_impl->setSharpeningPower(power);
 }
 

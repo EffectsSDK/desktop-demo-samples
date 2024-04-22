@@ -33,6 +33,7 @@ public slots:
 	void toggleColorGradingEnabled();
 	void toggleColorFilterEnabled();
 	void toggleLowLightAdjustment();
+	void toggleSharpening();
 	void onColorFilterPicked(const QString& fileName);
 	void openBackground();
 	void openColorGradingReference();
@@ -47,6 +48,7 @@ public slots:
 	void onColorIntensitySliderMoved();
 	void onColorLUTFileNotFoundError(const QString& fileName);
 	void onLowLightAdjustmentPowerSliderMoved();
+	void onSharpeningPowerSliderMoved();
 
 private:
 	void updateUIState();

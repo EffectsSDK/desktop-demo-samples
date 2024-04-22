@@ -45,7 +45,7 @@ else ()
 endif ()
 
 set(TSVB_BUNDLE_NAME "Video Effects SDK")
-set(TSVB_COPYRIGHT "(c) 2021-2023 TomskSoft")
+set(TSVB_COPYRIGHT "(c) 2021-2024 TomskSoft")
 set(TSVB_COMPANY "TomskSoft")
 
 if(OS_LINUX)

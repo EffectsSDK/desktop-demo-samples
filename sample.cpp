@@ -19,9 +19,11 @@ const char DENOISE_LEVEL[] = "denoise_level";
 const char DENOISE_WITH_FACE[] = "denoise_with_face";
 const char SMART_ZOOM_ENABLED[] = "smart_zoom_enabled";
 const char LOW_LIGHT_ADJUSTMENT_ENABLED[] = "low_light_adjustment_enabled";
+const char SHARPENING_ENABLED[] = "sharpening_enabled";
 const char ZOOM_LEVEL[] = "zoom_level";
 const char LOW_LIGHT_ADJUSTMENT_POWER[] = "low_light_adjustment_power";
 const char BACKGROUND_FILEPATH[] = "background_filepath";
+const char SHARPENING_POWER[] = "sharpening_power";
 const char BACKEND[] = "backend";
 const char PRESET[] = "preset";
 const char COLOR_GRADING_REFERENCE_PATH[] = "color_grading_reference_path";
@@ -164,6 +166,7 @@ void Sample::updateUIState()
 	m_ui->colorGradingCheckbox->setChecked(videoFilter->isColorGradingEnabled());
 	m_ui->smartZoomCheckBox->setChecked(videoFilter->isSmartZoomEnabled());
 	m_ui->lowLightAdjustmentCheckbox->setChecked(videoFilter->isLowLightAdjustmentEnabled());
+	m_ui->sharpeningCheckbox->setChecked(videoFilter->isSharpeningEnabled());
 
 	m_ui->beautificationLevelSlider->setEnabled(videoFilter->isBeautificationEnabled());
 	float beautificationLevel = videoFilter->beautificationLevel();
@@ -202,6 +205,13 @@ void Sample::updateUIState()
 	));
 	m_ui->lowLightAdjustmentPowerLabel->setText(stringFromNumber(lowLightPower));
 	m_ui->lowLightAdjustmentPowerSlider->setEnabled(videoFilter->isLowLightAdjustmentEnabled());
+
+	float sharpeningPower = videoFilter->sharpeningPower();
+	m_ui->sharpeningPowerLabel->setText(stringFromNumber(sharpeningPower));
+	m_ui->sharpeningPowerSlider->setValue(static_cast<int>(
+		sharpeningPower * m_ui->sharpeningPowerSlider->maximum()
+	));
+	m_ui->sharpeningPowerSlider->setEnabled(videoFilter->isSharpeningEnabled());
 
 	auto backend = videoFilter->backend();
 	m_ui->gpuRadioButton->setChecked(Backend::gpu == backend);
@@ -319,6 +329,13 @@ bool Sample::restoreUIAndPipelineFromSettings()
 	else {
 		videoFilter->disableLowLightAdjustment();
 	}
+	bool isSharpeningEnabled = m_settings->value(SHARPENING_ENABLED, false).toBool();
+	if (isSharpeningEnabled) {
+		videoFilter->enableSharpening();
+	}
+	else {
+		videoFilter->disableSharpening();
+	}
 
 	QString backgroundFilePath = m_settings->value(
 		BACKGROUND_FILEPATH,
@@ -356,6 +373,11 @@ bool Sample::restoreUIAndPipelineFromSettings()
 	float lowLightPower = m_settings->value(LOW_LIGHT_ADJUSTMENT_POWER, defaultLowLightPower).toFloat();
 	lowLightPower = std::min(std::max(lowLightPower, 0.0f), 1.0f);
 	videoFilter->setLowLightAdjustmentPower(lowLightPower);
+
+	float defaultSharpeningPower = videoFilter->sharpeningPower();
+	float sharpeningPower = m_settings->value(SHARPENING_POWER, defaultSharpeningPower).toFloat();
+	sharpeningPower = std::min(std::max(sharpeningPower, 0.0f), 1.0f);
+	videoFilter->setSharpeningPower(sharpeningPower);
 
 	QString colorGradingRefPath = 
 		m_settings->value(COLOR_GRADING_REFERENCE_PATH).toString();
@@ -751,6 +773,26 @@ void Sample::toggleLowLightAdjustment()
 	}
 }
 
+void Sample::toggleSharpening()
+{
+	bool enabled = m_pipeline->videoFilter()->isSharpeningEnabled();
+	if (enabled) {
+		m_pipeline->videoFilter()->disableSharpening();
+		m_ui->sharpeningCheckbox->setChecked(false);
+		m_ui->sharpeningPowerSlider->setEnabled(false);
+		m_settings->setValue(SHARPENING_ENABLED, false);
+		return;
+	}
+
+	bool ok = m_pipeline->videoFilter()->enableSharpening();
+	m_ui->sharpeningCheckbox->setChecked(ok);
+	m_ui->sharpeningPowerSlider->setEnabled(ok);
+	m_settings->setValue(SHARPENING_ENABLED, ok);
+	if (!ok) {
+		QMessageBox::warning(this, "Error", "Failure to enable Sharpening");
+	}
+}
+
 void Sample::onColorFilterPicked(const QString& fileName)
 {
 	if (m_pipeline->videoFilter()->isColorFilterEnabled()) {
@@ -799,6 +841,15 @@ void Sample::onLowLightAdjustmentPowerSliderMoved()
 	m_pipeline->videoFilter()->setLowLightAdjustmentPower(value);
 	m_ui->lowLightAdjustmentPowerLabel->setText(stringFromNumber(value));
 	m_settings->setValue(LOW_LIGHT_ADJUSTMENT_POWER, value);
+}
+
+void Sample::onSharpeningPowerSliderMoved()
+{
+	float value =
+		float(m_ui->sharpeningPowerSlider->value()) / float(m_ui->sharpeningPowerSlider->maximum());
+	m_pipeline->videoFilter()->setSharpeningPower(value);
+	m_ui->sharpeningPowerLabel->setText(stringFromNumber(value));
+	m_settings->setValue(SHARPENING_POWER, value);
 }
 
 void Sample::openBackground()

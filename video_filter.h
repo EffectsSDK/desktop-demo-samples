@@ -71,7 +71,12 @@ public:
 	bool isLowLightAdjustmentEnabled() const;
 	void setLowLightAdjustmentPower(float power);
 	float getLowLightAdjustmentPower() const;
-	void setLowLightAdjustmentUpdateInterval(int ms);
+	
+	bool enableSharpening();
+	void disableSharpening();
+	bool isSharpeningEnabled() const;
+	float sharpeningPower() const;
+	void setSharpeningPower(float power);
 
 private:
 	class Impl;

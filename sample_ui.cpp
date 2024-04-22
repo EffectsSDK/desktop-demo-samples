@@ -160,6 +160,13 @@ void SampleUI::createUI()
 	);
 	vbLayout->addWidget(lowLightAdjustmentCheckbox);
 
+	sharpeningCheckbox = new QCheckBox("Sharpening");
+	connect(
+		sharpeningCheckbox, &QCheckBox::clicked,
+		m_sample, &Sample::toggleSharpening
+	);
+	vbLayout->addWidget(sharpeningCheckbox);
+
 	openBackgroundButton = new QPushButton("Open Background", virtualBackgroundBox);
 	connect(
 		openBackgroundButton, &QPushButton::clicked,
@@ -233,6 +240,22 @@ void SampleUI::createUI()
 	);
 	vbLayout->addLayout(lowLightPowerLabelLayout);
 	vbLayout->addWidget(lowLightAdjustmentPowerSlider);
+
+	auto sharpeningPowerLabelLayout = new QHBoxLayout;
+	vbLayout->addLayout(sharpeningPowerLabelLayout);
+	sharpeningPowerLabelLayout->addWidget(new QLabel("Sharpening Power"));
+	sharpeningPowerLabelLayout->addStretch(1);
+	sharpeningPowerLabel = new QLabel;
+	sharpeningPowerLabelLayout->addWidget(sharpeningPowerLabel);
+
+	sharpeningPowerSlider = new QSlider(Qt::Horizontal);
+	vbLayout->addWidget(sharpeningPowerSlider);
+	sharpeningPowerSlider->setRange(0, 100);
+	connect(
+		sharpeningPowerSlider, &QSlider::actionTriggered,
+		m_sample, &Sample::onSharpeningPowerSliderMoved,
+		Qt::QueuedConnection
+	);
 
 	colorBox = new QGroupBox("Color", m_sample);
 	vbLayout->addWidget(colorBox);
