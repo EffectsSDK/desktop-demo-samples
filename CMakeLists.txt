@@ -22,6 +22,13 @@ if(NOT EXISTS ${EFFECTS_SDK_PATH})
 	message(FATAL_ERROR "The path to Video Effects SDK '${EFFECTS_SDK_PATH}' does not exist!")
 endif()
 
+if(ENABLE_PDB_FILES)
+	add_compile_options("/Zi")
+	add_link_options("/DEBUG:FULL")
+	add_link_options("/OPT:REF")
+	add_link_options("/OPT:ICF")
+endif()
+
 if(OS_WINDOWS)
 	option(WINDEPLOYQT "Path to windeployqt.exe")
 
@@ -45,8 +52,8 @@ else ()
 endif ()
 
 set(TSVB_BUNDLE_NAME "Video Effects SDK")
-set(TSVB_COPYRIGHT "(c) 2021-2024 TomskSoft")
-set(TSVB_COMPANY "TomskSoft")
+set(TSVB_COPYRIGHT "(c) 2025 Damiko Inc.")
+set(TSVB_COMPANY "Damiko Inc.")
 
 if(OS_LINUX)
 	string(REPLACE " " "" SAMPLE_APP_BIN_NAME "${SAMPLE_APP_NAME}")

@@ -61,6 +61,8 @@ public:
 	QGroupBox* backendBox = nullptr;
 	QRadioButton* gpuRadioButton = nullptr;
 	QRadioButton* cpuRadioButton = nullptr;
+	
+	QCheckBox* appleNeuralEngineCheckbox = nullptr;
 
 	QPushButton* about = nullptr;
 

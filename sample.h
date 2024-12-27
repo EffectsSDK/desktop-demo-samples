@@ -34,6 +34,7 @@ public slots:
 	void toggleColorFilterEnabled();
 	void toggleLowLightAdjustment();
 	void toggleSharpening();
+	void toggleAppleNeuralEngine();
 	void onColorFilterPicked(const QString& fileName);
 	void openBackground();
 	void openColorGradingReference();

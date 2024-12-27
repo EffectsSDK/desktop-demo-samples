@@ -222,6 +222,11 @@ void Sample::updateUIState()
 
 	checkCPUPipelineAvailable();
 	checkGPUOnlyFeaturesEnabled();
+	
+#ifdef Q_OS_APPLE
+	bool neuralEngineEnabled = m_pipeline->videoFilter()->isAppleNeuralEngineEnabled();
+	m_ui->appleNeuralEngineCheckbox->setChecked(neuralEngineEnabled);
+#endif
 }
 
 bool Sample::restoreUIAndPipelineFromSettings()
@@ -791,6 +796,13 @@ void Sample::toggleSharpening()
 	if (!ok) {
 		QMessageBox::warning(this, "Error", "Failure to enable Sharpening");
 	}
+}
+
+void Sample::toggleAppleNeuralEngine()
+{
+	bool enabled = m_pipeline->videoFilter()->isAppleNeuralEngineEnabled();
+	m_pipeline->videoFilter()->setAppleNeuralEngineEnabled(!enabled);
+	m_ui->appleNeuralEngineCheckbox->setChecked(!enabled);
 }
 
 void Sample::onColorFilterPicked(const QString& fileName)

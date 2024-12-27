@@ -13,10 +13,10 @@ To receive a Effects SDK license please fill in the contact form on [effectssdk.
 ## Techical Details
 
 - SDK available for macOS x64 and m1 platforms
-- SDK available for Windows 10 x64 platform
-- Also supported x32 applications which are running on x64 platform
+- SDK available for Windows 10/11 x64 platform
+- Also supported x86 applications which are running on x64 platform
 - Frames preprocessing/postprocessing could be run on CPU or GPU.
-- ML inference could be run only on CPU.
+- ML inference could be run only on CPU or Apple Neural Engine(For apple platforms only).
 
 ## Features
 
@@ -28,16 +28,17 @@ To receive a Effects SDK license please fill in the contact form on [effectssdk.
 - Color grading - **implemented**
 - Background denoise - **in progress**
 
-## Usage  details
+## Usage details
 
-The main object of the SDK is the instance which implements ISDKFactory. 
-Using an ISDKFactory instance you will be able to prepare frames for processing and configure the pipeline of processing (enable transparency, blur, replace background etc).
+The entry point of the SDK is the instance of (ISDKFactory)(#isdkfactory). 
+Using an **ISDKFactory** instance you will be able to prepare frames for processing and configure the pipeline of processing (enable transparency, blur, replace background etc).
 
 ### How to obtain a tsvb::ISDKFactory instance
 
-- Load the tsvb.dll with the usage of **LoadLibrary()** function.
+- Load the tsvb.dll with the usage of **LoadLibrary()** for Windows or **dlopen** for macOS/linux.
 - Get the address of **createSDKFactory()** function from the dll. Cast it to **::tsvb::pfnCreateSDKFactory** type.
 - Call the **createSDKFactory()** function to instantiate a **::tsvb::ISDKFactory** object.
+- Authorize instance to use it. Call [ISDKFactory::auth](#isdkfactory-auth) method to perform authorization.
 
 ```cpp
 ::tsvb::ISDKFactory* createFactory()
@@ -49,12 +50,6 @@ Using an ISDKFactory instance you will be able to prepare frames for processing 
     return createSDKFactory();
 }
 ```
-
-Class methods:
-**ISDKFactory::createFrameFactory()** - create instance of IFrameFactory.
-**ISDKFactory::createPipeline()** - create instance of IPipeline.
-
-**createSDKFactory()** may return NULL.
 
 ### Memory management
 
@@ -79,6 +74,8 @@ Preparation:
 Frame processing:
 - Put your frame to **IFrame** using **IFrameFactory::create()**.
 - Process it through **IPipeline::process()**.
+
+For apple platforms you can use **CVPixelBuffer** for better performance. See [IAppleCompatFrameFactory](#iapplecompatframefactory).
 
 Use separate **IPipeline** instances per video stream.
 
@@ -162,6 +159,81 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/path/to/libtsvb.so
 
 ## Class Reference
 
+### ISDKFactory
+
+<a id="isdkfactory-auth"></a>
+
+**ISDKFactory::auth()** - authorize the instance. The SDK can be used until authorized.  
+Parameters:
+- **const char\* customerID** - Customer ID string, unique identifier.
+- **pfnOnAuthCompletedCallback callback** - \[Optional\] Callback to be called on async authorization completed.
+- **void\* ctx** - Opaque callback context, will be passed as it is into callback.
+
+Returns: [IAuthResult](#iauthresult)
+
+Authorization performs web request to check passed customer ID and get license info.  
+
+Can be used synchronously and asynchronously.  
+To use synchronously, pass a null pointer at callback. In this case, method return pointer to [IAuthResult]() after authorization finished.  
+To use asynchronously, pass nonnull pointer at callback. In this case, method perform authorization asynchronously.  
+In asynchronous mode, the method returns null pointer. A valid pointer to **IAuthResult** will be passed into the callback.  
+
+Callback signature  
+```cpp
+void TSVB_CALLBACK authCompletionCallback(IAuthResult* result, void* ctx);
+```
+Don't call the **IAuthResult::release** instance received within the callback in asynchronous mode, result will be deleted after callback finished.  
+**IAuthResult** instance received in synchronous mode is owned by the caller and must be released when it isn't needed anymore.  
+
+Example of usage in synchronous mode.
+```cpp
+IAuthResult* authResult = sdkFactory->auth(customerID, nullptr, nullptr);
+if (authResult->status() == AuthStatus::active) {
+    // SDK can be used.
+}
+else {
+    // Authorization failed.
+}
+authResult->release();
+```
+
+Example of usage in asynchronous mode.
+```cpp
+// Note: Don't call IAuthResult::release within the callback.
+void TSVB_CALLBACK authCompletionCallback(IAuthResult* result, void* ctx)
+{
+    HandlerClass* handler = reinterpret_cast<HandlerClass*>(ctx);
+    handler->handleAuthResult(result);
+}
+
+// ...
+
+// Ignore returned value. In asynchronous mode auth returns null pointer.
+sdkFactory->auth(customerID, &authCompletionCallback, handler);
+```
+
+**ISDKFactory::waitUntilAuthFinished()** - Wait until async authorization is finished.  
+
+If **ISDKFactory::auth()** called in synchronous mode, then returns immediately. 
+
+Also waits until the callback is finished. Don't call **ISDKFactory::waitUntilAuthFinished()** within the callback.
+Don't unload SDK's library until async authorization is finished. This method can be used to be sure async authorization is finished before unloading dynamic library.
+
+**ISDKFactory::createFrameFactory()** - create instance of IFrameFactory.  
+**ISDKFactory::createPipeline()** - create instance of IPipeline.  
+
+### IAuthResult
+
+**IAuthResult::status()** - returns authorization status.  
+
+**AuthStatus**
+- **error** - An error occurred during web request. 
+- **active** - Authorization is succeeded and the license is active. SDK can be used to enhance your video.
+- **inactive** - Authorization is failed because the license is deactivated or no such license.
+- **expired** - Authorization is failed because the license is expired. Contact us to update it.
+
+**IAuthResult::obtainError()** - returns error object. See [IError](#ierror).    
+
 ### IFrameFactory
 
 **IFrameFactory** can be created by calling **ISDKFactory::createFrameFactory()**.
@@ -189,24 +261,68 @@ Parameters:
 Parameters:
 - **const char\* utf8FilePath** - path to the image file. Path should be in UTF-8.
 
+**IFrameFactory::getInterface()** - Returns the specific interface to get access to platform-specific APIs.  
+Parameters:
+- **InterfaceTypeID interfaceTypeID** - See [InterfaceTypeID](#interfacetypeid)
 
-## IFrame
+Use reinterpret_cast\<T\> to cast returned pointer to decided interface.
+
+**IFrameFactory** supports **IAppleCompatFrameFactory** interface to wrap **CVPixelBuffer** in **IFrame** to use with the pipeline.
+
+To get **IAppleCompatFrameFactory** pass **InterfaceTypeID::appleCompatFrameFactory**.
+
+### IAppleCompatFrameFactory
+
+**IAppleCompatFrameFactory::createFrameWithCVPixelBuffer()** - Creates **IFrame** with CVPixelBuffer.  
+Parameters:
+- **CVPixelBufferRef pixelBuffer** - [CVPixelBufferRef](https://developer.apple.com/documentation/corevideo/cvpixelbuffer-q2e)  
+- **bool metalCompatible** - Set true when **CVPixelBuffer** can be used in metal directly. 
+
+Recommended to use metal compatible **CVPixelBuffer**. The argument has not effect if CPU pipeline.
+If you does not know *pixelBuffer* is metal compatible or not then set *metalCompatible* to false.
+**CVPixelBuffer** received within [AVCaptureVideoDataOutputSampleBufferDelegate.captureOutput(_:didOutput:from:)](https://developer.apple.com/documentation/avfoundation/avcapturevideodataoutputsamplebufferdelegate/captureoutput(_:didoutput:from:)) from [AVCaptureSession](https://developer.apple.com/documentation/avfoundation/avcapturesession) is metal compatible.
+
+For manual creating, to create metal compatible **CVPixelBuffer**, set [kCVPixelBufferMetalCompatibilityKey](https://developer.apple.com/documentation/corevideo/kcvpixelbuffermetalcompatibilitykey) attribute.
+
+ Supported formats:
+- kCVPixelFormatType_32BGRA 
+- kCVPixelFormatType_32RGBA
+- kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange
+- kCVPixelFormatType_420YpCbCr8BiPlanarFullRange
+
+Example
+```cpp
+auto appleCompatFrameFactory = reinterpret_cast<IAppleCompatFrameFactory*>(
+    frameFactory->getInterface(InterfaceTypeID::appleCompatFrameFactory)
+);
+
+IFrame* frame = 
+    appleCompatFrameFactory->createFrameWithCVPixelBuffer(cvPixelBuffer, true);
+```
+
+### IFrame
 
 **FrameFormat** - format of data representation.
 - **bgra32** - format with 8 bit per channel (32 bits per pixel)
 - **nv12** - NV12 format.
-
 
 **IFrame::frameFormat()** - return format of data.
 
 **IFrame::width()** - return number of pixels in horizontal direction.
 **IFrame::height()** - return number of pixels in vertical direction.
 
+**IFrameFactory::getInterface()** - Returns the specific interface to get access to platform-specific APIs.  
+Parameters:
+- **InterfaceTypeID interfaceTypeID** - See [InterfaceTypeID](#interfacetypeid)
+
+Use reinterpret_cast\<T\> to cast returned pointer to decided interface.  
+**IFrame** supports **IAppleCompatFrame** interface to convert/obtain **CVPixelBuffer** from **IFrame**.  
+To get **IAppleCompatFrameFactory** pass **InterfaceTypeID::appleCompatFrame**.  
+
 **IFrame::lock()** - get access to virtual memory of process. Return ILockedFrameData interface which provides ability to get pointers to internal data of IFrame **(DON’T use the IFrame until ILockedFrameData wasn’t released)**.
 
 Parameters:
 - **int frameLock** - could be **FrameLock::read**, **FrameLock::write** or **FrameLock::readWrite**. 
-
 
 **ILockedFrameData** - keep access to the data inside IFrame and return pointers to that data.
 If it was obtained with **IFrame::lock()** with param **FrameLock::write** or **FrameLock::readWrite**, then the changes will be applied after **ILockedFrameData** will be released.  
@@ -220,6 +336,22 @@ Parameters:
 **ILockedFrameData::bytesPerLine()** - return number of bytes per line.
 Parameters:
 - **int planarIndex** - see **ILockedFrameData::dataPointer()**.
+
+### IAppleCompatFrame
+
+**IAppleCompatFrame::toCVPixelBuffer()** - Convert internal storage to **CVPixelBuffer**.  
+
+**IFrame** does not be used in pipeline after this method called.  
+If you want to use **CVPixelBuffer** after **IFrame** released, increase **CVPixelBuffer** reference count by using [CVPixelBufferRetain](https://developer.apple.com/documentation/corevideo/1563590-cvpixelbufferretain).
+
+Example
+```cpp
+auto appleCompatFrame = reinterpret_cast<IAppleCompatFrame>(
+    frame->getInterface(InterfaceTypeID::appleCompatFrame)
+);
+
+CVPixelBufferRef pixelBuffer = appleCompatFrame->toCVPixelBuffer();
+```
 
 ### IPipeline
 
@@ -355,7 +487,7 @@ Parameters:
 
 **IReplacementController::clearBackgroundImage()** - clear custom background image, the background will be transparent.
 
-## IPipelineConfiguration
+### IPipelineConfiguration
 
 **Backend** - backend of pipeline.
 - **CPU** - CPU-based pipeline.
@@ -379,6 +511,48 @@ Default is GPU
 **IPipelineConfiguration::setSegmentationPreset()** - set segmentation preset.
 Parameters:
 - **int preset** - must be one of SegmentationPreset values.
-Default is segmentationPresetQuality.
+Default is segmentationPresetBalanced.
 
 **IPipelineConfiguration::getSegmentationPreset()** - return current segmentation preset.
+
+**MLBackend**
+- **mlBackendCPU**
+- **mlBackendAppleNeuralEngine** - has effects on apple platforms only.
+
+**IPipelineConfiguration::getSegmentationMLBackends()** - returns mask with enabled **MLBackends**.
+
+**IPipelineConfiguration::setSegmentationMLBackends()** - Set mask with enabled **MLBackends**.
+Parameters:
+- **int mlBackends** - Enabled backends mask.
+
+Example
+```cpp
+int backends = MLBackend::mlBackendCPU;
+if (neuralEngineEnabled) {
+    backends |= MLBackend::mlBackendAppleNeuralEngine;
+}
+config->setSegmentationMLBackends(backends);
+```
+
+### IError
+
+**IError::description()** - returns null terminated utf8 string with description of error.  
+
+**IError::nativeErrorType()** - returns the type of contained native error.  
+**IError::nativeError()** - returns contained native error, see NativeErrorType.  
+ 
+**NativeErrorType**
+- **none** - No native error contained.
+- **nsError** - Contained an instance of [NSError](https://developer.apple.com/documentation/foundation/nserror).
+
+```objective-c
+IError* error = authResult->obtainError();
+NSError* nsError = (__bridge NSError*)error->nativeError();
+// If ARC is not enabled. [nsError retain];
+error->release();
+```
+
+### InterfaceTypeID
+
+- **appleCompatFrame** - [IAppleCompatFrame](#iapplecompatframe).
+- **appleCompatFrameFactory** - [IAppleCompatFrameFactory](#iapplecompatframefactory).

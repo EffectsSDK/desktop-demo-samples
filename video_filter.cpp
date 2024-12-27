@@ -64,6 +64,13 @@ public:
 		if (nullptr == factory) {
 			return false;
 		}
+		
+		std::unique_ptr<tsvb::IAuthResult, Releaser> authResult;
+		authResult.reset(factory->auth("CUSTOMER_ID", nullptr, nullptr));
+		if (tsvb::AuthStatus::active != authResult->status()) {
+			return false;
+		}
+		
 		_frameFactory.reset(factory->createFrameFactory());
 		if (nullptr == _frameFactory) {
 			return false;
@@ -523,6 +530,29 @@ public:
 		std::lock_guard<std::mutex> lockGuard(_mutex);
 		_pipeline->setSharpeningPower(power);
 	}
+	
+	bool isAppleNeuralEngineEnabled() const
+	{
+		std::lock_guard<std::mutex> lockGuard(_mutex);
+		std::unique_ptr<tsvb::IPipelineConfiguration, Releaser> config;
+		config.reset(_pipeline->copyConfiguration());
+		return config->getSegmentationMLBackends() & tsvb::mlBackendAppleNeuralEngine;
+	}
+	
+	void setAppleNeuralEngineEnabled(bool enabled) {
+		std::lock_guard<std::mutex> lockGuard(_mutex);
+		std::unique_ptr<tsvb::IPipelineConfiguration, Releaser> config;
+		config.reset(_pipeline->copyConfiguration());
+		int mlBackends = config->getSegmentationMLBackends();
+		if (enabled) {
+			mlBackends = mlBackends | tsvb::mlBackendAppleNeuralEngine;
+		}
+		else {
+			mlBackends = mlBackends & (-1 ^ tsvb::mlBackendAppleNeuralEngine);
+		}
+		config->setSegmentationMLBackends(mlBackends);
+		_pipeline->setConfiguration(config.get());
+	}
 };
 
 VideoFilter::VideoFilter()
@@ -793,5 +823,15 @@ float VideoFilter::sharpeningPower() const
 void VideoFilter::setSharpeningPower(float power)
 {
 	_impl->setSharpeningPower(power);
+}
+
+bool VideoFilter::isAppleNeuralEngineEnabled() const
+{
+	return _impl->isAppleNeuralEngineEnabled();
+}
+
+void VideoFilter::setAppleNeuralEngineEnabled(bool enabled)
+{
+	_impl->setAppleNeuralEngineEnabled(enabled);
 }
 

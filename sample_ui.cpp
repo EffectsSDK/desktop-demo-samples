@@ -350,6 +350,19 @@ void SampleUI::createUI()
 	);
 
 	vbLayout->addLayout(presetLayout);
+	
+	appleNeuralEngineCheckbox = new QCheckBox("Apple Neural Engine");
+	vbLayout->addWidget(appleNeuralEngineCheckbox);
+	
+#ifdef Q_OS_APPLE
+	connect(
+		appleNeuralEngineCheckbox, &QCheckBox::clicked,
+		m_sample, &Sample::toggleAppleNeuralEngine,
+		Qt::QueuedConnection
+	);
+#else 
+	appleNeuralEngineCheckbox->setDisabled(true);
+#endif
 
 	controlsLayout->addStretch(1);
 

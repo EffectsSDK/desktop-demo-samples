@@ -77,6 +77,9 @@ public:
 	bool isSharpeningEnabled() const;
 	float sharpeningPower() const;
 	void setSharpeningPower(float power);
+	
+	bool isAppleNeuralEngineEnabled() const;
+	void setAppleNeuralEngineEnabled(bool enabled);
 
 private:
 	class Impl;
