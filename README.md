@@ -1,4 +1,4 @@
-# Video Effects SDK - Windows/macOS trial SDK and Demo samples
+# Video Effects SDK - Windows/macOS/Linux trial SDK and Demo samples
 
 Add real-time AI video enhancement that makes video meeting experience more effective and comfortable to your application in a few hours.
 
@@ -8,13 +8,14 @@ Also, there is the Demo Applications with Effects SDK integration, so you can ju
 
 ## Obtaining Effects SDK License
 
-To receive a Effects SDK license please fill in the contact form on [effectssdk.com](https://effectssdk.com/contacts) website.
+Register and get license token at our official [Developer Portal](https://effectssdk.ai/cp/registration).
 
 ## Techical Details
 
-- SDK available for macOS x64 and m1 platforms
-- SDK available for Windows 10/11 x64 platform
-- Also supported x86 applications which are running on x64 platform
+- SDK available for macOS x64 and m1 platforms.
+- SDK available for Windows 10/11 x64 platform.
+- SDK available for Ubuntu since 20.04.
+- Also supported x86 applications which are running on x64 platform.
 - Frames preprocessing/postprocessing could be run on CPU or GPU.
 - ML inference could be run only on CPU or Apple Neural Engine(For apple platforms only).
 
@@ -26,7 +27,6 @@ To receive a Effects SDK license please fill in the contact form on [effectssdk.
 - Auto framing/Smart Zoom - **implemented**
 - Auto color correction - **implemented**
 - Color grading - **implemented**
-- Background denoise - **in progress**
 
 ## Usage details
 
