@@ -222,6 +222,23 @@ Don't unload SDK's library until async authorization is finished. This method ca
 **ISDKFactory::createFrameFactory()** - create instance of IFrameFactory.  
 **ISDKFactory::createPipeline()** - create instance of IPipeline.  
 
+**ISDKFactory::authWithKey()** - authorize the instance offline.  
+Parameters:
+- **const char\* key** - Unique client's secret key. DO NOT reveal it.
+
+Authorizes an instance of SDKFactory similar to **ISDKFactory::auth**, but performs license verification without web requests. Internet connection is not required.
+
+```cpp
+IAuthResult* authResult = sdkFactory->authWithKey("Your_secret_key");
+if (authResult->status() == AuthStatus::active) {
+    // SDK can be used.
+}
+else {
+    // Authorization failed.
+}
+authResult->release();
+```
+
 ### IAuthResult
 
 **IAuthResult::status()** - returns authorization status.  
