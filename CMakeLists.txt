@@ -1,280 +1,225 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.26)
 
-set(TARGET Sample)
+set(CMAKE_OSX_DEPLOYMENT_TARGET "12.0" CACHE STRING "Qt 6.8 runs on macOS 12 and later")
 
-project(${TARGET} CXX)
+project(SampleQml VERSION 1.0 LANGUAGES CXX)
 
-if(CMAKE_SYSTEM_NAME MATCHES "Windows")
-	set(OS_WINDOWS YES)
-elseif(CMAKE_SYSTEM_NAME MATCHES "Linux")
-	set(OS_LINUX YES)
-elseif(CMAKE_SYSTEM_NAME MATCHES "Darwin")
-	set(OS_MACOS YES)
+if(APPLE)
+	enable_language(OBJCXX)
+	set(CMAKE_OBJCXX_STANDARD 17)
+	set(CMAKE_OBJCXX_STANDARD_REQUIRED ON)
 endif()
 
-set(EFFECTS_SDK_PATH "" CACHE PATH "Path to Video Effects SDK") 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-if(NOT EFFECTS_SDK_PATH)
-	message(FATAL_ERROR  "EFFECTS_SDK_PATH is not set!")
+set(EFFECTS_SDK_PATH "" CACHE PATH "Video Effects SDK: the directory holding include/vb_sdk")
+if(NOT EXISTS "${EFFECTS_SDK_PATH}/include/vb_sdk")
+	message(FATAL_ERROR "EFFECTS_SDK_PATH has to point at Video Effects SDK, the directory holding include/vb_sdk: '${EFFECTS_SDK_PATH}'")
 endif()
 
-if(NOT EXISTS ${EFFECTS_SDK_PATH})
-	message(FATAL_ERROR "The path to Video Effects SDK '${EFFECTS_SDK_PATH}' does not exist!")
-endif()
-
-if(ENABLE_PDB_FILES)
-	add_compile_options("/Zi")
-	add_link_options("/DEBUG:FULL")
-	add_link_options("/OPT:REF")
-	add_link_options("/OPT:ICF")
-endif()
-
-if(OS_WINDOWS)
-	option(WINDEPLOYQT "Path to windeployqt.exe")
-
-	if ((CMAKE_SIZEOF_VOID_P EQUAL 8) AND EXISTS "${EFFECTS_SDK_PATH}/bin_64")
-		set(EFFECTS_SDK_BIN_PATH_DEFAULT "${EFFECTS_SDK_PATH}/bin_64")
-	elseif((CMAKE_SIZEOF_VOID_P EQUAL 4) AND EXISTS "${EFFECTS_SDK_PATH}/bin_32")
-		set(EFFECTS_SDK_BIN_PATH_DEFAULT "${EFFECTS_SDK_PATH}/bin_32")
+if(WIN32)
+	# The layout of the SDK package: bin_64, lib_64, bin_32, lib_32 next to include.
+	if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+		set(sdk_bits 64)
+	else()
+		set(sdk_bits 32)
 	endif()
-	set(EFFECTS_SDK_BIN_PATH ${EFFECTS_SDK_BIN_PATH_DEFAULT} CACHE PATH "Path to a dir with binaries of Video Effects SDK")
-endif()
-
-if (OS_LINUX)
-	option(LINUXDEPLOY "Path to linuxdeploy bin for appdir generation")
-endif()
-
-set(SAMPLE_APP_NAME "Video Effects SDK")
-if (DEFINED ENV{PRODUCT_VERSION})
-	set(VERSION_STR $ENV{PRODUCT_VERSION})
-else ()
-	set(VERSION_STR "1.0.0.0")
-endif ()
-
-set(TSVB_BUNDLE_NAME "Video Effects SDK")
-set(TSVB_COPYRIGHT "(c) 2025 Damiko Inc.")
-set(TSVB_COMPANY "Damiko Inc.")
-
-if(OS_LINUX)
-	string(REPLACE " " "" SAMPLE_APP_BIN_NAME "${SAMPLE_APP_NAME}")
-else()
-	set(SAMPLE_APP_BIN_NAME "${SAMPLE_APP_NAME}")
-endif()
-
-set(CMAKE_AUTOMOC ON)
-
-if(OS_WINDOWS)
-	set(QT_FRAMEWORK Qt6)
-	set(QT_FRAMEWORK_DIR ${Qt6_DIR})
-else()
-	set(QT_FRAMEWORK Qt5)
-	set(QT_FRAMEWORK_DIR ${Qt5_DIR})
-endif()
-
-list(APPEND CMAKE_PREFIX_PATH ${QT_FRAMEWORK_DIR})
-
-find_package(${QT_FRAMEWORK} COMPONENTS Widgets Multimedia REQUIRED)
-find_package(OpenCV REQUIRED)
-
-if ("${CMAKE_SIZEOF_VOID_P}" STREQUAL "8")
-set(IS_X64_BUILD true)
-elseif("${CMAKE_SIZEOF_VOID_P}" STREQUAL "4")
-set(IS_X86_BUILD true)
-endif()
-
-if(OS_WINDOWS)
-	add_executable(${TARGET} WIN32)
-elseif(OS_LINUX)
-	add_executable(${TARGET})
-elseif(OS_MACOS)
-	add_executable(${TARGET} MACOSX_BUNDLE)
-endif()
-
-target_include_directories(${TARGET} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include
-	${CMAKE_CURRENT_SOURCE_DIR} ${EFFECTS_SDK_PATH}/include/
-	${CMAKE_CURRENT_BINARY_DIR})
-
-set(H_SOURCES
-	${H_SOURCES}
-	${CMAKE_CURRENT_SOURCE_DIR}/frame_view.h
-	${CMAKE_CURRENT_SOURCE_DIR}/media_utils.h
-	${CMAKE_CURRENT_SOURCE_DIR}/metrics.h
-	${CMAKE_CURRENT_SOURCE_DIR}/metrics_view.h
-	${CMAKE_CURRENT_SOURCE_DIR}/pipeline.h
-	${CMAKE_CURRENT_SOURCE_DIR}/sample.h
-	${CMAKE_CURRENT_SOURCE_DIR}/sample_ui.h
-	${CMAKE_CURRENT_SOURCE_DIR}/sdk_library_handler.h
-	${CMAKE_CURRENT_SOURCE_DIR}/video_filter.h
-)
-
-set (CPP_SOURCES
-	${CPP_SOURCES}
-	${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/frame_view.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/media_utils.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/metrics.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/metrics_view.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/pipeline.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/sample.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/sample_ui.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/video_filter.cpp
-)
-
-if(OS_WINDOWS)
-	set (CPP_SOURCES
-		${CPP_SOURCES}
-		${CMAKE_CURRENT_SOURCE_DIR}/sdk_library_handler_win.cpp
-	)
-elseif(OS_LINUX OR OS_MACOS)
-	set (CPP_SOURCES
-		${CPP_SOURCES}
-		${CMAKE_CURRENT_SOURCE_DIR}/sdk_library_handler_unix.cpp
-	)
-endif()
-
-if(OS_MACOS)
-	set (H_SOURCES
-		${H_SOURCES}
-		${CMAKE_CURRENT_SOURCE_DIR}/camera_access_authorization.h
-	)
-	set (CPP_SOURCES
-		${CPP_SOURCES}
-		${CMAKE_CURRENT_SOURCE_DIR}/camera_access_authorization.mm
-	)
-endif()
-
-target_sources(${TARGET}
-	PRIVATE
-	${CPP_SOURCES}
-	${H_SOURCES}
-)
-
-target_link_libraries(${TARGET} PRIVATE
-	${QT_FRAMEWORK}::Widgets
-	${QT_FRAMEWORK}::Multimedia
-)
-
-if(TARGET opencv::opencv_videoio)
-	target_link_libraries(${TARGET} PRIVATE
-		opencv::opencv_videoio
-	)
-else()
-	target_link_libraries(${TARGET} PRIVATE
-		${OpenCV_LIBS}
-	)	
-	target_include_directories(${TARGET} PRIVATE
-		${OpenCV_INCLUDE_DIRS}
-	)
-endif()
-
-if(OS_LINUX)
-	target_link_libraries(${TARGET} PRIVATE
-		-pthread 
-		-ldl
-	)
-endif()
-
-if (OS_WINDOWS)
-	add_subdirectory(win_version)
-	target_link_libraries(${TARGET} PRIVATE ${TARGET}_VERSION)
-endif()
-
-set_target_properties(${TARGET} PROPERTIES OUTPUT_NAME "${SAMPLE_APP_BIN_NAME}")
-
-target_compile_definitions(${TARGET} PRIVATE 
-	TSVB_APP_NAME="${SAMPLE_APP_NAME}"
-	TSVB_APP_BIN_NAME="${SAMPLE_APP_BIN_NAME}"
-	TSVB_VERSION_STRING="${VERSION_STR}"
-	TSVB_BUNDLE_NAME="${TSVB_BUNDLE_NAME}"
-	TSVB_COPYRIGHT="${TSVB_COPYRIGHT}"
-	TSVB_COMPANY="${TSVB_COMPANY}"
-)
-
-set(RESOURCES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/resources)
-
-if(OS_MACOS)
-	find_library(COCOA_LIBRARY Cocoa)
-	target_link_libraries(${TARGET} PRIVATE ${COCOA_LIBRARY})
-	set_target_properties(${TARGET} PROPERTIES
-		MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/BundleInfo.plist.in"
-		MACOSX_BUNDLE_BUNDLE_NAME "${TSVB_BUNDLE_NAME}"
-		MACOSX_BUNDLE_COPYRIGHT "${TSVB_COPYRIGHT}"
-		VERSION "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}.${VERSION_BUILD}"
-	)
-	set(bundle_dir $<TARGET_BUNDLE_CONTENT_DIR:${TARGET}>)
-	if (NOT DEFINED EFFECTS_SDK_DYLIB_PATH)
-		set(EFFECTS_SDK_DYLIB_PATH "${EFFECTS_SDK_PATH}/libtsvb.dylib")
+	if(EXISTS "${EFFECTS_SDK_PATH}/bin_${sdk_bits}")
+		set(EFFECTS_SDK_BIN_PATH_DEFAULT "${EFFECTS_SDK_PATH}/bin_${sdk_bits}")
 	endif()
-	add_custom_command(TARGET ${TARGET} POST_BUILD
-		COMMAND ${CMAKE_COMMAND} -E copy_directory 
-			"${RESOURCES_DIR}/color_luts" 
+	set(EFFECTS_SDK_BIN_PATH "${EFFECTS_SDK_BIN_PATH_DEFAULT}" CACHE PATH "The SDK binaries, copied next to the executable")
+
+	option(EFFECTS_SDK_LINK "Link tsvb.lib instead of loading tsvb.dll at run time" OFF)
+	set(EFFECTS_SDK_IMPLIB_PATH "${EFFECTS_SDK_PATH}/lib_${sdk_bits}/tsvb.lib" CACHE FILEPATH "The import library of tsvb.dll, for EFFECTS_SDK_LINK")
+endif()
+
+if(DEFINED ENV{PRODUCT_VERSION})
+	set(SAMPLE_VERSION "$ENV{PRODUCT_VERSION}")
+else()
+	set(SAMPLE_VERSION "1.0.0.0")
+endif()
+set(SAMPLE_COPYRIGHT "(c) 2025-2026 Damiko Inc.")
+
+set(SAMPLE_RESOURCES_DIR "${CMAKE_CURRENT_SOURCE_DIR}/resources")
+
+find_package(Qt6 6.8.4 REQUIRED COMPONENTS Multimedia Quick QuickControls2)
+
+qt_standard_project_setup(REQUIRES 6.8)
+
+qt_add_executable(SampleQml WIN32 MACOSX_BUNDLE
+	main.cpp
+)
+
+file(GLOB COLOR_FILTER_PREVIEWS CONFIGURE_DEPENDS
+	RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
+	"${CMAKE_CURRENT_SOURCE_DIR}/resources/color_filters/*.jpg"
+)
+
+qt_add_qml_module(SampleQml
+	URI SampleQml
+	VERSION 1.0
+	QML_FILES
+		qml/Main.qml
+		qml/FeatureCard.qml
+		qml/LabeledSlider.qml
+		qml/ColorFilterGrid.qml
+	RESOURCES
+		${COLOR_FILTER_PREVIEWS}
+		resources/icons/reset.svg
+	SOURCES
+		camera_controller.cpp
+		camera_controller.h
+		capture_loop.cpp
+		capture_loop.h
+		controller_settings.cpp
+		controller_settings.h
+		sample_controller.cpp
+		sample_controller.h
+		sdk_library_handler.h
+		video_filter.cpp
+		video_filter.h
+)
+
+if(APPLE OR EFFECTS_SDK_LINK)
+	target_sources(SampleQml PRIVATE sdk_library_handler_linked.cpp)
+	if(NOT TARGET tsvb)
+		add_library(tsvb SHARED IMPORTED)
+		if(APPLE)
+			set(EFFECTS_SDK_DYLIB_PATH "${EFFECTS_SDK_PATH}/libtsvb.dylib" CACHE FILEPATH "The SDK library, linked and copied into the bundle")
+			set_target_properties(tsvb PROPERTIES
+				IMPORTED_LOCATION "${EFFECTS_SDK_DYLIB_PATH}"
+				IMPORTED_SONAME "@rpath/libtsvb.dylib"
+			)
+		else()
+			set_target_properties(tsvb PROPERTIES IMPORTED_IMPLIB "${EFFECTS_SDK_IMPLIB_PATH}")
+		endif()
+	endif()
+	target_link_libraries(SampleQml PRIVATE tsvb)
+elseif(WIN32)
+	target_sources(SampleQml PRIVATE sdk_library_handler_win.cpp)
+else()
+	target_sources(SampleQml PRIVATE sdk_library_handler_unix.cpp)
+	target_link_libraries(SampleQml PRIVATE ${CMAKE_DL_LIBS})
+endif()
+
+target_include_directories(SampleQml PRIVATE "${EFFECTS_SDK_PATH}/include")
+
+target_compile_definitions(SampleQml PRIVATE
+	SAMPLE_VERSION="${SAMPLE_VERSION}"
+	SAMPLE_COPYRIGHT="${SAMPLE_COPYRIGHT}"
+)
+
+target_link_libraries(SampleQml PRIVATE
+	Qt6::Multimedia
+	Qt6::Quick
+	Qt6::QuickControls2
+)
+
+if(APPLE)
+	if(NOT TARGET Qt6::MultimediaPrivate OR NOT TARGET Qt6::GuiPrivate)
+		message(FATAL_ERROR "The macOS Metal bridge requires Qt Multimedia and Gui private development headers matching the installed Qt libraries.")
+	endif()
+	target_link_libraries(SampleQml PRIVATE Qt6::MultimediaPrivate Qt6::GuiPrivate)
+	target_sources(SampleQml PRIVATE
+		capture_loop_mac.cpp
+		camera/camera_capturer.h
+		camera/camera_capturer_mac.mm
+		camera/frame_mailbox.h
+		mac/pixel_buffer.h
+		mac/pixel_buffer_video_frame.h
+		mac/pixel_buffer_video_frame.mm
+	)
+	set_source_files_properties(camera/camera_capturer_mac.mm mac/pixel_buffer_video_frame.mm PROPERTIES
+		COMPILE_OPTIONS "-fobjc-arc"
+	)
+	foreach(framework AVFoundation CoreMedia CoreVideo Foundation Metal)
+		find_library(${framework}_FRAMEWORK ${framework} REQUIRED)
+		target_link_libraries(SampleQml PRIVATE "${${framework}_FRAMEWORK}")
+	endforeach()
+endif()
+
+if(WIN32)
+	string(REPLACE "." "," SAMPLE_VERSION_COMMAS "${SAMPLE_VERSION}")
+	configure_file(version.rc.in "${CMAKE_CURRENT_BINARY_DIR}/version.rc" @ONLY)
+	target_sources(SampleQml PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/version.rc")
+
+	target_sources(SampleQml PRIVATE
+		capture_loop_win.cpp
+		camera/camera_capturer.h
+		camera/camera_capturer_win.cpp
+		camera/frame_mailbox.h
+	)
+	target_link_libraries(SampleQml PRIVATE mf mfplat mfreadwrite mfuuid)
+endif()
+
+set_target_properties(SampleQml PROPERTIES
+	OUTPUT_NAME "Video Effects SDK"
+)
+
+if(APPLE)
+	set_property(TARGET SampleQml APPEND PROPERTY BUILD_RPATH "@executable_path/../Frameworks")
+
+	string(REGEX MATCH "^[0-9]+(\\.[0-9]+)?(\\.[0-9]+)?" SAMPLE_SHORT_VERSION "${SAMPLE_VERSION}")
+	if(SAMPLE_VERSION MATCHES "^[0-9]+\\.[0-9]+\\.[0-9]+\\.([0-9]+)")
+		set(SAMPLE_BUILD_NUMBER "${CMAKE_MATCH_1}")
+	else()
+		set(SAMPLE_BUILD_NUMBER "${SAMPLE_SHORT_VERSION}")
+	endif()
+
+	set_target_properties(SampleQml PROPERTIES
+		MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/Info.plist.in"
+		MACOSX_BUNDLE_GUI_IDENTIFIER "com.effectssdk.SDK.Sample"
+		MACOSX_BUNDLE_BUNDLE_NAME "Video Effects SDK"
+		MACOSX_BUNDLE_SHORT_VERSION_STRING "${SAMPLE_SHORT_VERSION}"
+		MACOSX_BUNDLE_BUNDLE_VERSION "${SAMPLE_BUILD_NUMBER}"
+		MACOSX_BUNDLE_COPYRIGHT "${SAMPLE_COPYRIGHT}"
+	)
+
+	set(bundle_dir "$<TARGET_BUNDLE_CONTENT_DIR:SampleQml>")
+	add_custom_command(TARGET SampleQml POST_BUILD
+		COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different
+			"${SAMPLE_RESOURCES_DIR}/color_luts"
 			"${bundle_dir}/Resources/color_luts"
-		COMMAND ${CMAKE_COMMAND} -E copy_if_different 
-			"${RESOURCES_DIR}/background.jpg" 
+		COMMAND ${CMAKE_COMMAND} -E copy_if_different
+			"${SAMPLE_RESOURCES_DIR}/background.jpg"
 			"${bundle_dir}/Resources/background.jpg"
 		COMMAND ${CMAKE_COMMAND} -E make_directory "${bundle_dir}/Frameworks"
-		COMMAND ${CMAKE_COMMAND} -E copy_if_different 
-			"${EFFECTS_SDK_DYLIB_PATH}" 
+		COMMAND ${CMAKE_COMMAND} -E copy_if_different
+			"${EFFECTS_SDK_DYLIB_PATH}"
 			"${bundle_dir}/Frameworks/libtsvb.dylib"
 		VERBATIM
 	)
 endif()
 
-if (OS_WINDOWS)
-	add_custom_command(TARGET ${TARGET} POST_BUILD
-		COMMAND ${CMAKE_COMMAND} -E copy_directory 
-			"${RESOURCES_DIR}/color_luts" 
-			"$<TARGET_FILE_DIR:${TARGET}>/color_luts"
-		COMMAND ${CMAKE_COMMAND} -E copy_if_different 
-			"${RESOURCES_DIR}/background.jpg" 
-			"$<TARGET_FILE_DIR:${TARGET}>/background.jpg"
+if(WIN32)
+	add_custom_command(TARGET SampleQml POST_BUILD
+		COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different
+			"${SAMPLE_RESOURCES_DIR}/color_luts"
+			"$<TARGET_FILE_DIR:SampleQml>/color_luts"
+		COMMAND ${CMAKE_COMMAND} -E copy_if_different
+			"${SAMPLE_RESOURCES_DIR}/background.jpg"
+			"$<TARGET_FILE_DIR:SampleQml>/background.jpg"
 		VERBATIM
 	)
-	if (EFFECTS_SDK_BIN_PATH)
-		add_custom_command(TARGET ${TARGET} POST_BUILD
-			COMMAND ${CMAKE_COMMAND} -E copy_directory 
-				"${EFFECTS_SDK_BIN_PATH}/" 
-				"$<TARGET_FILE_DIR:${TARGET}>"
+
+	if(EFFECTS_SDK_BIN_PATH)
+		add_custom_command(TARGET SampleQml POST_BUILD
+			COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different
+				"${EFFECTS_SDK_BIN_PATH}"
+				"$<TARGET_FILE_DIR:SampleQml>"
 			VERBATIM
 		)
 	endif()
 endif()
 
-if(OS_WINDOWS AND WINDEPLOYQT)
+if(WIN32 AND TARGET Qt6::windeployqt)
 	add_custom_target(DeployQt
-		COMMAND "${WINDEPLOYQT}" 
-			--no-translations 
-			--no-quick-import  
-			"$<TARGET_FILE:${TARGET}>"
-		DEPENDS ${TARGET}
-		VERBATIM
-	)
-endif()
-
-if(OS_LINUX AND LINUXDEPLOY)
-	set(SDK_LIB_NAME libtsvb.so)
-	configure_file(
-		${CMAKE_CURRENT_SOURCE_DIR}/sample.desktop.in
-		${CMAKE_CURRENT_BINARY_DIR}/${SAMPLE_APP_BIN_NAME}.desktop
-		@ONLY	
-	)
-	set(appdir ${CMAKE_CURRENT_BINARY_DIR}/appdir)
-	add_custom_target(DeployAppDir 
-		COMMAND ${LINUXDEPLOY} 
-			--appdir ${appdir} 
-			--desktop-file=${CMAKE_CURRENT_BINARY_DIR}/${SAMPLE_APP_BIN_NAME}.desktop 
-			--executable=$<TARGET_FILE:${TARGET}>
-			--library=${EFFECTS_SDK_PATH}/lib/${SDK_LIB_NAME}
-			--icon-file=${RESOURCES_DIR}/icons/256x256/logo-icon.png
-			--icon-file=${RESOURCES_DIR}/icons/256x256/logo-icon.svg
-			--plugin qt
-		COMMAND ${CMAKE_COMMAND} -E copy_directory 
-			${RESOURCES_DIR}/color_luts 
-			${appdir}/usr/share/color_luts
-		COMMAND ${CMAKE_COMMAND} -E copy_if_different 
-			${RESOURCES_DIR}/background.jpg
-			${appdir}/usr/share/background.jpg
-		DEPENDS ${TARGET}
+		COMMAND "$<TARGET_FILE:Qt6::windeployqt>"
+			--no-translations
+			--qmldir "${CMAKE_CURRENT_SOURCE_DIR}/qml"
+			"$<TARGET_FILE:SampleQml>"
+		DEPENDS SampleQml
 		VERBATIM
 	)
 endif()

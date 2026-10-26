@@ -1,4 +1,3 @@
-syntax: glob
 *.dll
 .vs/
 *.VC.*db
@@ -7,5 +6,4 @@ CMakeSettings.json
 .DS_Store
 .idea/
 .venv/
-win_version/version_config.cmake
 CMakeLists.txt.user

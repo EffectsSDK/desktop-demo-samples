@@ -2,7 +2,7 @@
 
 #include <Windows.h>
 
-class BGLibraryHandler::Impl
+class SDKLibraryHandler::Impl
 {
 	HMODULE _handle = nullptr;
 	tsvb::pfnCreateSDKFactory _createSDKFactory = nullptr;
@@ -46,19 +46,19 @@ public:
 	}
 };
 
-BGLibraryHandler::BGLibraryHandler():
+SDKLibraryHandler::SDKLibraryHandler():
 	_impl(new Impl)
 { }
 
-BGLibraryHandler::~BGLibraryHandler()
+SDKLibraryHandler::~SDKLibraryHandler()
 { }
 
-tsvb::ISDKFactory* BGLibraryHandler::createSDKFactory()
+SDKUniquePtr<tsvb::ISDKFactory> SDKLibraryHandler::createSDKFactory()
 {
-	return _impl->createFactory();
+	return SDKUniquePtr<tsvb::ISDKFactory>(_impl->createFactory());
 }
 
-bool BGLibraryHandler::isValid() const
+bool SDKLibraryHandler::isValid() const
 {
 	return _impl->isValid();
 }

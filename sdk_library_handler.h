@@ -1,20 +1,33 @@
-#ifndef DEMO_APP_SRC_LIBRARY_LOADER_H
-#define DEMO_APP_SRC_LIBRARY_LOADER_H
+#ifndef SAMPLE_QML_SDK_LIBRARY_HANDLER_H
+#define SAMPLE_QML_SDK_LIBRARY_HANDLER_H
 
 #include <cstddef>
 #include <vb_sdk/sdk_factory.h>
 
 #include <memory>
 
-class BGLibraryHandler
+struct SDKReleaser
+{
+	void operator()(tsvb::IRelease* object) const
+	{
+		object->release();
+	}
+};
+
+// An object the SDK created. The library that made it has to be loaded when it
+// goes: whatever keeps one beyond the handler's life keeps the handler too.
+template <typename T>
+using SDKUniquePtr = std::unique_ptr<T, SDKReleaser>;
+
+class SDKLibraryHandler
 {
 public:
-	BGLibraryHandler();
-	~BGLibraryHandler();
+	SDKLibraryHandler();
+	~SDKLibraryHandler();
 
 	bool isValid() const;
 
-	tsvb::ISDKFactory* createSDKFactory();
+	SDKUniquePtr<tsvb::ISDKFactory> createSDKFactory();
 
 private:
 	class Impl;

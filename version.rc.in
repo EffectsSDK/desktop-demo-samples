@@ -1,0 +1,30 @@
+#include <winres.h>
+
+VS_VERSION_INFO VERSIONINFO
+	FILEVERSION @SAMPLE_VERSION_COMMAS@
+	PRODUCTVERSION @SAMPLE_VERSION_COMMAS@
+	FILEFLAGSMASK 0x3fL
+	FILEFLAGS 0x0L
+	FILEOS VOS_NT_WINDOWS32
+	FILETYPE VFT_APP
+	FILESUBTYPE VFT2_UNKNOWN
+BEGIN
+	BLOCK "StringFileInfo"
+	BEGIN
+		BLOCK "040904b0"
+		BEGIN
+			VALUE "CompanyName", "Damiko Inc."
+			VALUE "FileDescription", "Video Effects SDK Sample"
+			VALUE "FileVersion", "@SAMPLE_VERSION@"
+			VALUE "InternalName", "Video Effects SDK"
+			VALUE "LegalCopyright", "@SAMPLE_COPYRIGHT@"
+			VALUE "OriginalFilename", "Video Effects SDK.exe"
+			VALUE "ProductName", "Video Effects SDK"
+			VALUE "ProductVersion", "@SAMPLE_VERSION@"
+		END
+	END
+	BLOCK "VarFileInfo"
+	BEGIN
+		VALUE "Translation", 0x409, 1200
+	END
+END

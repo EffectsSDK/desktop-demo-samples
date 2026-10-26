@@ -1,89 +1,42 @@
-#ifndef BG_REPLACER_H
-#define BG_REPLACER_H
+#ifndef SAMPLE_QML_VIDEO_FILTER_H
+#define SAMPLE_QML_VIDEO_FILTER_H
 
-#include "consts.h"
-
-#include <QImage>
+#include "sdk_library_handler.h"
 
 #include <memory>
 
-class VideoFilter {
+#ifdef __APPLE__
+#include "mac/pixel_buffer.h"
+#else
+#include "camera/camera_capturer.h"
+#endif
+
+class VideoFilter
+{
 public:
 	VideoFilter();
 	~VideoFilter();
 
 	bool isValid() const;
 
-	QImage replaceBG(const QImage& img);
+#ifdef __APPLE__
+	PixelBufferPtr process(CVPixelBufferRef pixels);
+#else
+	// NV12 of the image's colors; null also when no effect is enabled.
+	SDKUniquePtr<tsvb::IFrame> process(const camera::Nv12Image& image);
+#endif
 
-	bool setBackend(Backend backend);
-	Backend backend() const;
+	// Held by whatever keeps a frame from process() after this filter is gone.
+	std::shared_ptr<SDKLibraryHandler> sdkHandler() const;
 
-	bool setPreset(Preset preset);
-	Preset preset() const;
-
-	bool enableBlur();
-	void disableBlur();
-	bool isBlurEnabled() const;
-
-	bool enableDenoise();
-	void disableDenoise();
-	bool isDenoiseEnabled() const;
-	float denoisePower() const;
-	void setDenoisePower(float power);
-	bool isDenoiseWithFace() const;
-	void setDenoiseWithFace(bool withFace);
-
-	bool enableReplacement();
-	void disableReplacement();
-	bool isReplaceEnabled() const;
-	void setBackground(const QString& filePath);
-
-	bool enableBeautification();
-	void disableBeautification();
-	bool isBeautificationEnabled() const;
-	void setBeautificationLevel(float level);
-	float beautificationLevel() const;
-	
-	bool enableColorCorrection();
-	void disableColorCorrection();
-	bool isColorCorrectionEnabled() const;
-	void setColorCorrectionPower(float power);
-
-	bool enableSmartZoom();
-	void disableSmartZoom();
-	bool isSmartZoomEnabled() const;
-	void setSmartZoomLevel(float level);
-	float smartZoomLevel() const;
-
-	bool enableColorGrading(const QString& refImage);
-	void disableColorGrading();
-	bool isColorGradingEnabled() const;
-	void setColorGradingPower(float power);
-
-	bool enableColorFilter(const QString& filePath);
-	void disableColorFilter();
-	bool isColorFilterEnabled() const;
-	void setColorFilterPower(float power);
-
-	bool enableLowLightAdjustment();
-	void disableLowLightAdjustment();
-	bool isLowLightAdjustmentEnabled() const;
-	void setLowLightAdjustmentPower(float power);
-	float getLowLightAdjustmentPower() const;
-	
-	bool enableSharpening();
-	void disableSharpening();
-	bool isSharpeningEnabled() const;
-	float sharpeningPower() const;
-	void setSharpeningPower(float power);
-	
-	bool isAppleNeuralEngineEnabled() const;
-	void setAppleNeuralEngineEnabled(bool enabled);
+	tsvb::IPipeline& pipeline();
+	tsvb::IFrameFactory& frameFactory();
 
 private:
-	class Impl;
-	std::unique_ptr<Impl> _impl;
+	// First, so that the library outlives everything below.
+	std::shared_ptr<SDKLibraryHandler> _handler;
+	SDKUniquePtr<tsvb::IFrameFactory> _frameFactory;
+	SDKUniquePtr<tsvb::IPipeline> _pipeline;
 };
 
-#endif // BG_REPLACER_H
+#endif
